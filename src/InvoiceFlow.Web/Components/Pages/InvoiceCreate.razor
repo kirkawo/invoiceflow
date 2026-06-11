@@ -16,10 +16,11 @@
 
 <EditForm Model="@model" OnValidSubmit="@HandleSubmit">
     <DataAnnotationsValidator />
+    <ValidationSummary class="text-danger mb-3" />
     <div class="mb-3">
         <label for="client" class="form-label">Client</label>
         <select id="client" class="form-select" @bind="model.ClientId">
-            <option value="@Guid.Empty">-- Select a client --</option>
+            <option value="">-- Select a client --</option>
             @if (clients is not null)
             {
                 @foreach (var client in clients)
@@ -83,18 +84,21 @@
 
         try
         {
+            model.Currency = model.Currency?.ToUpperInvariant() ?? "USD";
             var issueDate = model.IssueDateUtc.ToUniversalTime();
             var dueDate = model.DueDateUtc.ToUniversalTime();
 
+            var clientId = model.ClientId!.Value;
+
             await InvoiceService.CreateInvoiceDraftAsync(
-                model.ClientId,
+                clientId,
                 model.Number,
                 issueDate,
                 dueDate,
                 model.Currency,
                 model.Notes);
 
-            Navigation.NavigateTo($"/clients/{model.ClientId}/invoices");
+            Navigation.NavigateTo($"/clients/{clientId}/invoices");
         }
         catch (Exception ex)
         {
@@ -106,10 +110,10 @@
         }
     }
 
-    private class InvoiceCreateModel
+    private class InvoiceCreateModel : IValidatableObject
     {
         [Required]
-        public Guid ClientId { get; set; } = Guid.Empty;
+        public Guid? ClientId { get; set; }
 
         [Required]
         public string Number { get; set; } = string.Empty;
@@ -124,5 +128,15 @@
         public string Currency { get; set; } = "USD";
 
         public string? Notes { get; set; }
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            if (DueDateUtc < IssueDateUtc)
+            {
+                yield return new ValidationResult(
+                    "Due date cannot be earlier than issue date.",
+                    [nameof(DueDateUtc)]);
+            }
+        }
     }
 }
