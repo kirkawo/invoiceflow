@@ -14,6 +14,7 @@
 }
 
 <EditForm Model="@model" OnValidSubmit="@HandleSubmit">
+    <DataAnnotationsValidator />
     <div class="mb-3">
         <label for="name" class="form-label">Name</label>
         <InputText id="name" class="form-control" @bind-Value="model.Name" />
@@ -29,7 +30,7 @@
         <InputText id="company" class="form-control" @bind-Value="model.CompanyName" />
     </div>
     <button type="submit" class="btn btn-primary" disabled="@saving">@(saving ? "Saving..." : "Create")</button>
-    <a href="clients" class="btn btn-outline-secondary ms-2">Cancel</a>
+    <a href="/clients" class="btn btn-outline-secondary ms-2">Cancel</a>
 </EditForm>
 
 @code {
@@ -59,8 +60,13 @@
 
     private class ClientCreateModel
     {
+        [Required]
         public string Name { get; set; } = string.Empty;
+
+        [Required]
+        [EmailAddress]
         public string Email { get; set; } = string.Empty;
+
         public string? CompanyName { get; set; }
     }
 }

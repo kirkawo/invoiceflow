@@ -15,6 +15,7 @@
 }
 
 <EditForm Model="@model" OnValidSubmit="@HandleSubmit">
+    <DataAnnotationsValidator />
     <div class="mb-3">
         <label for="client" class="form-label">Client</label>
         <select id="client" class="form-select" @bind="model.ClientId">
@@ -27,22 +28,27 @@
                 }
             }
         </select>
+        <ValidationMessage For="@(() => model.ClientId)" />
     </div>
     <div class="mb-3">
         <label for="number" class="form-label">Invoice Number</label>
         <InputText id="number" class="form-control" @bind-Value="model.Number" />
+        <ValidationMessage For="@(() => model.Number)" />
     </div>
     <div class="mb-3">
         <label for="issueDate" class="form-label">Issue Date</label>
         <InputDate id="issueDate" class="form-control" @bind-Value="model.IssueDateUtc" />
+        <ValidationMessage For="@(() => model.IssueDateUtc)" />
     </div>
     <div class="mb-3">
         <label for="dueDate" class="form-label">Due Date</label>
         <InputDate id="dueDate" class="form-control" @bind-Value="model.DueDateUtc" />
+        <ValidationMessage For="@(() => model.DueDateUtc)" />
     </div>
     <div class="mb-3">
         <label for="currency" class="form-label">Currency</label>
         <InputText id="currency" class="form-control" @bind-Value="model.Currency" />
+        <ValidationMessage For="@(() => model.Currency)" />
     </div>
     <div class="mb-3">
         <label for="notes" class="form-label">Notes</label>
@@ -102,11 +108,21 @@
 
     private class InvoiceCreateModel
     {
+        [Required]
         public Guid ClientId { get; set; } = Guid.Empty;
+
+        [Required]
         public string Number { get; set; } = string.Empty;
+
+        [Required]
         public DateTime IssueDateUtc { get; set; } = DateTime.Today;
+
+        [Required]
         public DateTime DueDateUtc { get; set; } = DateTime.Today.AddDays(30);
+
+        [Required]
         public string Currency { get; set; } = "USD";
+
         public string? Notes { get; set; }
     }
 }

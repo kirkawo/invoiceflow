@@ -21,7 +21,7 @@ else
 {
     <p class="lead mb-3">Client: <strong>@clientName</strong></p>
 
-    <a href="invoices/new" class="btn btn-primary mb-3">Create Invoice</a>
+    <a href="/invoices/new" class="btn btn-primary mb-3">Create Invoice</a>
 
     @if (invoices is null)
     {
@@ -81,13 +81,24 @@ else
     {
         try
         {
-            invoices = await InvoiceService.GetClientInvoicesAsync(ClientId);
-            var client = await ClientService.GetClientsAsync();
-            clientName = client.FirstOrDefault(c => c.Id == ClientId)?.Name ?? "Unknown";
+            await LoadClientNameAsync();
+            await LoadInvoicesAsync();
         }
         catch (Exception ex)
         {
             error = ex.Message;
         }
+    }
+
+    private async Task LoadClientNameAsync()
+    {
+        var allClients = await ClientService.GetClientsAsync();
+        clientName = allClients.FirstOrDefault(c => c.Id == ClientId)?.Name ?? "Unknown";
+    }
+
+    private async Task LoadInvoicesAsync()
+    {
+        var loaded = await InvoiceService.GetClientInvoicesAsync(ClientId);
+        invoices = loaded.OrderByDescending(i => i.DueDateUtc).ToList().AsReadOnly();
     }
 }

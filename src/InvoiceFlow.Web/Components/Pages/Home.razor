@@ -30,15 +30,15 @@ else
     </div>
 
     <div class="mb-4">
-        <a href="clients" class="btn btn-outline-primary me-2">View Clients</a>
-        <a href="clients/new" class="btn btn-primary me-2">Create Client</a>
-        <a href="invoices/new" class="btn btn-success">Create Invoice</a>
+        <a href="/clients" class="btn btn-outline-primary me-2">View Clients</a>
+        <a href="/clients/new" class="btn btn-primary me-2">Create Client</a>
+        <a href="/invoices/new" class="btn btn-success">Create Invoice</a>
     </div>
 
     @if (clients.Count == 0)
     {
         <div class="alert alert-info">
-            No clients yet. <a href="clients/new">Create your first client</a> to get started.
+            No clients yet. <a href="/clients/new">Create your first client</a> to get started.
         </div>
     }
     else
@@ -60,7 +60,7 @@ else
                         <td>@client.Name</td>
                         <td>@client.Email</td>
                         <td>@client.CompanyName</td>
-                        <td><a href="clients/@client.Id/invoices" class="btn btn-sm btn-outline-secondary">Invoices</a></td>
+                        <td><a href="/clients/@client.Id/invoices" class="btn btn-sm btn-outline-secondary">Invoices</a></td>
                     </tr>
                 }
             </tbody>

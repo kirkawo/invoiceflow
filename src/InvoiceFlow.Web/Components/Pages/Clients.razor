@@ -7,7 +7,7 @@
 
 <h1>Clients</h1>
 
-<a href="clients/new" class="btn btn-primary mb-3">Create Client</a>
+<a href="/clients/new" class="btn btn-primary mb-3">Create Client</a>
 
 @if (error is not null)
 {
@@ -20,7 +20,7 @@
 }
 else if (clients.Count == 0)
 {
-    <div class="alert alert-info">No clients yet. <a href="clients/new">Create one</a>.</div>
+    <div class="alert alert-info">No clients yet. <a href="/clients/new">Create one</a>.</div>
 }
 else
 {
@@ -42,7 +42,7 @@ else
                     <td>@client.Email</td>
                     <td>@client.CompanyName</td>
                     <td>@client.CreatedAtUtc.ToShortDateString()</td>
-                    <td><a href="clients/@client.Id/invoices" class="btn btn-sm btn-outline-secondary">Invoices</a></td>
+                    <td><a href="/clients/@client.Id/invoices" class="btn btn-sm btn-outline-secondary">Invoices</a></td>
                 </tr>
             }
         </tbody>
