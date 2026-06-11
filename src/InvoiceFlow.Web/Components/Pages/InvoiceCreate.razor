@@ -1,0 +1,142 @@
+@page "/invoices/new"
+@rendermode InteractiveServer
+
+@inject InvoiceService InvoiceService
+@inject ClientService ClientService
+@inject NavigationManager Navigation
+
+<PageTitle>New Invoice - InvoiceFlow</PageTitle>
+
+<h1>Create Invoice Draft</h1>
+
+@if (error is not null)
+{
+    <div class="alert alert-danger">@error</div>
+}
+
+<EditForm Model="@model" OnValidSubmit="@HandleSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary class="text-danger mb-3" />
+    <div class="mb-3">
+        <label for="client" class="form-label">Client</label>
+        <select id="client" class="form-select" @bind="model.ClientId">
+            <option value="">-- Select a client --</option>
+            @if (clients is not null)
+            {
+                @foreach (var client in clients)
+                {
+                    <option value="@client.Id">@client.Name (@client.Email)</option>
+                }
+            }
+        </select>
+        <ValidationMessage For="@(() => model.ClientId)" />
+    </div>
+    <div class="mb-3">
+        <label for="number" class="form-label">Invoice Number</label>
+        <InputText id="number" class="form-control" @bind-Value="model.Number" />
+        <ValidationMessage For="@(() => model.Number)" />
+    </div>
+    <div class="mb-3">
+        <label for="issueDate" class="form-label">Issue Date</label>
+        <InputDate id="issueDate" class="form-control" @bind-Value="model.IssueDateUtc" />
+        <ValidationMessage For="@(() => model.IssueDateUtc)" />
+    </div>
+    <div class="mb-3">
+        <label for="dueDate" class="form-label">Due Date</label>
+        <InputDate id="dueDate" class="form-control" @bind-Value="model.DueDateUtc" />
+        <ValidationMessage For="@(() => model.DueDateUtc)" />
+    </div>
+    <div class="mb-3">
+        <label for="currency" class="form-label">Currency</label>
+        <InputText id="currency" class="form-control" @bind-Value="model.Currency" />
+        <ValidationMessage For="@(() => model.Currency)" />
+    </div>
+    <div class="mb-3">
+        <label for="notes" class="form-label">Notes</label>
+        <InputTextArea id="notes" class="form-control" @bind-Value="model.Notes" />
+    </div>
+    <button type="submit" class="btn btn-primary" disabled="@saving">@(saving ? "Saving..." : "Create")</button>
+    <a href="/" class="btn btn-outline-secondary ms-2">Cancel</a>
+</EditForm>
+
+@code {
+    private IReadOnlyList<ClientDto>? clients;
+    private InvoiceCreateModel model = new();
+    private string? error;
+    private bool saving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            clients = await ClientService.GetClientsAsync();
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        saving = true;
+        error = null;
+
+        try
+        {
+            model.Currency = model.Currency?.ToUpperInvariant() ?? "USD";
+            var issueDate = model.IssueDateUtc.ToUniversalTime();
+            var dueDate = model.DueDateUtc.ToUniversalTime();
+
+            var clientId = model.ClientId!.Value;
+
+            await InvoiceService.CreateInvoiceDraftAsync(
+                clientId,
+                model.Number,
+                issueDate,
+                dueDate,
+                model.Currency,
+                model.Notes);
+
+            Navigation.NavigateTo($"/clients/{clientId}/invoices");
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    private class InvoiceCreateModel : IValidatableObject
+    {
+        [Required]
+        public Guid? ClientId { get; set; }
+
+        [Required]
+        public string Number { get; set; } = string.Empty;
+
+        [Required]
+        public DateTime IssueDateUtc { get; set; } = DateTime.Today;
+
+        [Required]
+        public DateTime DueDateUtc { get; set; } = DateTime.Today.AddDays(30);
+
+        [Required]
+        public string Currency { get; set; } = "USD";
+
+        public string? Notes { get; set; }
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            if (DueDateUtc < IssueDateUtc)
+            {
+                yield return new ValidationResult(
+                    "Due date cannot be earlier than issue date.",
+                    [nameof(DueDateUtc)]);
+            }
+        }
+    }
+}

@@ -1,0 +1,67 @@
+@page "/clients"
+@rendermode InteractiveServer
+
+@inject ClientService ClientService
+
+<PageTitle>Clients - InvoiceFlow</PageTitle>
+
+<h1>Clients</h1>
+
+<a href="/clients/new" class="btn btn-primary mb-3">Create Client</a>
+
+@if (error is not null)
+{
+    <div class="alert alert-danger">@error</div>
+}
+
+@if (clients is null)
+{
+    <p>Loading...</p>
+}
+else if (clients.Count == 0)
+{
+    <div class="alert alert-info">No clients yet. <a href="/clients/new">Create one</a>.</div>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Company</th>
+                <th>Created</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var client in clients)
+            {
+                <tr>
+                    <td>@client.Name</td>
+                    <td>@client.Email</td>
+                    <td>@client.CompanyName</td>
+                    <td>@client.CreatedAtUtc.ToShortDateString()</td>
+                    <td><a href="/clients/@client.Id/invoices" class="btn btn-sm btn-outline-secondary">Invoices</a></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IReadOnlyList<ClientDto>? clients;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            clients = await ClientService.GetClientsAsync();
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+    }
+}
