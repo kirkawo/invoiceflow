@@ -17,3 +17,5 @@ app.MapInvoiceEndpoints();
 app.MapClientInvoiceEndpoints();
 
 app.Run();
+
+public partial class Program { }
