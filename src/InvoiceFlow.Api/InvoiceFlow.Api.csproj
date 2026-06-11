@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\InvoiceFlow.Application\InvoiceFlow.Application.csproj" />
+    <ProjectReference Include="..\InvoiceFlow.Infrastructure\InvoiceFlow.Infrastructure.csproj" />
+    <ProjectReference Include="..\InvoiceFlow.Pdf\InvoiceFlow.Pdf.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+</Project>
