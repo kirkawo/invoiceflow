@@ -1,28 +1,27 @@
-# Invoiceflow — Agent guide
+# InvoiceFlow — Agent guide
 
-## Project
+## Stack
 
-Backend-first billing assistant for freelancers (invoices, reminders, payment tracking).
+- **.NET 8**, ASP.NET Core Web API + Blazor Web App, xUnit
+- Layered: `Domain` → `Application` → (`Infrastructure` / `Pdf`) → (`Api` / `Web`)
+- Branches: `main` / `develop` (feature branches off `develop`)
+- `*.env` excluded; no secrets in repo
 
-## Stack clues
+## Commands
 
-- `.gitignore` is the standard **Visual Studio** template → project is **.NET / C#**.
-- No `package.json`, `Cargo.toml`, `pyproject.toml`, etc. — not Node, Rust, or Python.
-- No `.sln` or `.csproj` yet; repo is at initial commit with no code.
-
-## Branches
-
-- `main` / `develop` — standard Git Flow branching. Feature branches off `develop`.
-
-## Conventions (inferred from .gitignore)
-
-```
-*.env           # no secrets in repo
-node_modules/   # if any JS tooling is added later
+```powershell
+dotnet build InvoiceFlow.sln          # full solution build
+dotnet test InvoiceFlow.sln           # run all tests
+dotnet add reference <path>.csproj    # add project reference
 ```
 
-## When scaffolding
+## Conventions
 
-- Use standard .NET project layout: `src/` for projects, `tests/` for test projects.
-- Use file-scoped namespaces, implicit usings, and nullable reference types (current .NET conventions).
-- Run `dotnet restore` after adding packages, `dotnet build` before committing.
+- File-scoped namespaces, implicit usings, nullable enabled (set per project)
+- No Class1.cs / demo boilerplate — keep `Program.cs` minimal
+- New features go in the appropriate layer; Domain has no external deps
+- Run `dotnet build` before committing
+
+## Out of scope for MVP
+
+No AI, crypto, Docker, EF Core, Identity, MediatR, FluentValidation, or payment gateways.
