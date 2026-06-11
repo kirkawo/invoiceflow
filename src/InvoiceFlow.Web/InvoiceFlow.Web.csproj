@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\InvoiceFlow.Application\InvoiceFlow.Application.csproj" />
+    <ProjectReference Include="..\InvoiceFlow.Infrastructure\InvoiceFlow.Infrastructure.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

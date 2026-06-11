@@ -1,8 +1,14 @@
+using InvoiceFlow.Application;
+using InvoiceFlow.Infrastructure;
 using InvoiceFlow.Web.Components;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+builder.Services
+    .AddApplication()
+    .AddInfrastructure();
+
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
