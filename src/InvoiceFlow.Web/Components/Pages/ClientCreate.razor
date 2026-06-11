@@ -1,0 +1,66 @@
+@page "/clients/new"
+@rendermode InteractiveServer
+
+@inject ClientService ClientService
+@inject NavigationManager Navigation
+
+<PageTitle>New Client - InvoiceFlow</PageTitle>
+
+<h1>Create Client</h1>
+
+@if (error is not null)
+{
+    <div class="alert alert-danger">@error</div>
+}
+
+<EditForm Model="@model" OnValidSubmit="@HandleSubmit">
+    <div class="mb-3">
+        <label for="name" class="form-label">Name</label>
+        <InputText id="name" class="form-control" @bind-Value="model.Name" />
+        <ValidationMessage For="@(() => model.Name)" />
+    </div>
+    <div class="mb-3">
+        <label for="email" class="form-label">Email</label>
+        <InputText id="email" class="form-control" @bind-Value="model.Email" />
+        <ValidationMessage For="@(() => model.Email)" />
+    </div>
+    <div class="mb-3">
+        <label for="company" class="form-label">Company Name</label>
+        <InputText id="company" class="form-control" @bind-Value="model.CompanyName" />
+    </div>
+    <button type="submit" class="btn btn-primary" disabled="@saving">@(saving ? "Saving..." : "Create")</button>
+    <a href="clients" class="btn btn-outline-secondary ms-2">Cancel</a>
+</EditForm>
+
+@code {
+    private ClientCreateModel model = new();
+    private string? error;
+    private bool saving;
+
+    private async Task HandleSubmit()
+    {
+        saving = true;
+        error = null;
+
+        try
+        {
+            await ClientService.CreateClientAsync(model.Name, model.Email, model.CompanyName);
+            Navigation.NavigateTo("/clients");
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    private class ClientCreateModel
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string? CompanyName { get; set; }
+    }
+}

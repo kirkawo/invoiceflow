@@ -1,0 +1,93 @@
+@page "/clients/{clientId:guid}/invoices"
+@rendermode InteractiveServer
+
+@inject InvoiceService InvoiceService
+@inject ClientService ClientService
+
+<PageTitle>Client Invoices - InvoiceFlow</PageTitle>
+
+<h1>Invoices</h1>
+
+@if (error is not null)
+{
+    <div class="alert alert-danger">@error</div>
+}
+
+@if (clientName is null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <p class="lead mb-3">Client: <strong>@clientName</strong></p>
+
+    <a href="invoices/new" class="btn btn-primary mb-3">Create Invoice</a>
+
+    @if (invoices is null)
+    {
+        <p>Loading invoices...</p>
+    }
+    else if (invoices.Count == 0)
+    {
+        <div class="alert alert-info">No invoices for this client yet.</div>
+    }
+    else
+    {
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Number</th>
+                    <th>Status</th>
+                    <th>Currency</th>
+                    <th>Total</th>
+                    <th>Due Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var invoice in invoices)
+                {
+                    <tr>
+                        <td>@invoice.Number</td>
+                        <td>
+                            <span class="badge @(invoice.Status switch
+                            {
+                                InvoiceStatus.Draft => "bg-secondary",
+                                InvoiceStatus.Issued => "bg-primary",
+                                InvoiceStatus.Paid => "bg-success",
+                                InvoiceStatus.Overdue => "bg-warning text-dark",
+                                InvoiceStatus.Cancelled => "bg-danger",
+                                _ => "bg-secondary"
+                            })">@invoice.Status</span>
+                        </td>
+                        <td>@invoice.Currency</td>
+                        <td>@invoice.Total.ToString("F2")</td>
+                        <td>@invoice.DueDateUtc.ToShortDateString()</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@code {
+    private IReadOnlyList<InvoiceDto>? invoices;
+    private string? clientName;
+    private string? error;
+
+    [Parameter]
+    public Guid ClientId { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        try
+        {
+            invoices = await InvoiceService.GetClientInvoicesAsync(ClientId);
+            var client = await ClientService.GetClientsAsync();
+            clientName = client.FirstOrDefault(c => c.Id == ClientId)?.Name ?? "Unknown";
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+    }
+}

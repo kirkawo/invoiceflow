@@ -1,7 +1,86 @@
 ﻿@page "/"
+@rendermode InteractiveServer
 
-<PageTitle>Home</PageTitle>
+@inject ClientService ClientService
 
-<h1>Hello, world!</h1>
+<PageTitle>Dashboard - InvoiceFlow</PageTitle>
 
-Welcome to your new app.
+<h1>Dashboard</h1>
+
+@if (error is not null)
+{
+    <div class="alert alert-danger">@error</div>
+}
+
+@if (clients is null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card text-bg-primary">
+                <div class="card-body">
+                    <h5 class="card-title">Total Clients</h5>
+                    <p class="display-6">@clients.Count</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mb-4">
+        <a href="clients" class="btn btn-outline-primary me-2">View Clients</a>
+        <a href="clients/new" class="btn btn-primary me-2">Create Client</a>
+        <a href="invoices/new" class="btn btn-success">Create Invoice</a>
+    </div>
+
+    @if (clients.Count == 0)
+    {
+        <div class="alert alert-info">
+            No clients yet. <a href="clients/new">Create your first client</a> to get started.
+        </div>
+    }
+    else
+    {
+        <h3>Recent Clients</h3>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Company</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var client in clients)
+                {
+                    <tr>
+                        <td>@client.Name</td>
+                        <td>@client.Email</td>
+                        <td>@client.CompanyName</td>
+                        <td><a href="clients/@client.Id/invoices" class="btn btn-sm btn-outline-secondary">Invoices</a></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@code {
+    private IReadOnlyList<ClientDto>? clients;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            clients = await ClientService.GetClientsAsync();
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+    }
+}
