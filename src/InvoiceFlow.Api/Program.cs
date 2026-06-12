@@ -1,11 +1,11 @@
 using System.Security.Claims;
 using InvoiceFlow.Application;
+using InvoiceFlow.Application.Abstractions;
 using InvoiceFlow.Infrastructure;
 using InvoiceFlow.Infrastructure.Persistence;
 using InvoiceFlow.Api.Endpoints;
 using InvoiceFlow.Domain;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -64,6 +64,17 @@ using (var scope = app.Services.CreateScope())
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.Use(async (context, next) =>
+{
+    var workspaceService = context.RequestServices.GetRequiredService<ICurrentWorkspaceService>();
+    var claim = context.User.FindFirst("WorkspaceId");
+    if (claim is not null && Guid.TryParse(claim.Value, out var workspaceId))
+    {
+        workspaceService.SetWorkspaceId(workspaceId);
+    }
+    await next();
+});
 
 app.MapPost("/api/auth/login", async (LoginRequest request, SignInManager<ApplicationUser> signInManager) =>
 {
