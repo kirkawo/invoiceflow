@@ -17,9 +17,10 @@ public class EfClientRepository : IClientRepository
 
     public async Task<Client?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
+        var workspaceId = _workspaceService.WorkspaceId;
         return await _context.Clients
             .AsNoTracking()
-            .FirstOrDefaultAsync(c => c.WorkspaceId == _workspaceService.WorkspaceId && c.Id == id, cancellationToken);
+            .FirstOrDefaultAsync(c => c.WorkspaceId == workspaceId && c.Id == id, cancellationToken);
     }
 
     public async Task AddAsync(Client client, CancellationToken cancellationToken = default)
@@ -30,8 +31,9 @@ public class EfClientRepository : IClientRepository
 
     public async Task<IReadOnlyList<Client>> ListAsync(CancellationToken cancellationToken = default)
     {
+        var workspaceId = _workspaceService.WorkspaceId;
         return await _context.Clients
-            .Where(c => c.WorkspaceId == _workspaceService.WorkspaceId)
+            .Where(c => c.WorkspaceId == workspaceId)
             .AsNoTracking()
             .ToListAsync(cancellationToken);
     }

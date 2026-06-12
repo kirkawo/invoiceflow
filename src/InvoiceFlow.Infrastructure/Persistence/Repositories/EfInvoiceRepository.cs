@@ -17,10 +17,11 @@ public class EfInvoiceRepository : IInvoiceRepository
 
     public async Task<Invoice?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
+        var workspaceId = _workspaceService.WorkspaceId;
         return await _context.Invoices
             .Include(i => i.LineItems)
             .AsNoTracking()
-            .FirstOrDefaultAsync(i => i.WorkspaceId == _workspaceService.WorkspaceId && i.Id == id, cancellationToken);
+            .FirstOrDefaultAsync(i => i.WorkspaceId == workspaceId && i.Id == id, cancellationToken);
     }
 
     public async Task AddAsync(Invoice invoice, CancellationToken cancellationToken = default)
@@ -37,8 +38,9 @@ public class EfInvoiceRepository : IInvoiceRepository
 
     public async Task<IReadOnlyList<Invoice>> ListByClientAsync(Guid clientId, CancellationToken cancellationToken = default)
     {
+        var workspaceId = _workspaceService.WorkspaceId;
         return await _context.Invoices
-            .Where(i => i.WorkspaceId == _workspaceService.WorkspaceId && i.ClientId == clientId)
+            .Where(i => i.WorkspaceId == workspaceId && i.ClientId == clientId)
             .Include(i => i.LineItems)
             .AsNoTracking()
             .ToListAsync(cancellationToken);
