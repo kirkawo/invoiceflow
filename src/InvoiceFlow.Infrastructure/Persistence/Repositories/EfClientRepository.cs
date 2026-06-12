@@ -26,6 +26,6 @@ public class EfClientRepository : IClientRepository
 
     public async Task<IReadOnlyList<Client>> ListAsync(CancellationToken cancellationToken = default)
     {
-        return await _context.Clients.ToListAsync(cancellationToken);
+        return await _context.Clients.AsNoTracking().ToListAsync(cancellationToken);
     }
 }

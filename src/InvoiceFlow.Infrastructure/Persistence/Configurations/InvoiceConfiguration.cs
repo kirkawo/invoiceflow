@@ -35,5 +35,13 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         });
 
         builder.Navigation(i => i.LineItems).HasField("_lineItems");
+
+        builder.HasOne<Client>()
+            .WithMany()
+            .HasForeignKey(i => i.ClientId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(i => i.ClientId).HasDatabaseName("IX_Invoices_ClientId");
+        builder.HasIndex(i => i.Number).HasDatabaseName("IX_Invoices_Number");
     }
 }

@@ -17,6 +17,7 @@ public class EfInvoiceRepository : IInvoiceRepository
     {
         return await _context.Invoices
             .Include(i => i.LineItems)
+            .AsNoTracking()
             .FirstOrDefaultAsync(i => i.Id == id, cancellationToken);
     }
 
@@ -37,6 +38,7 @@ public class EfInvoiceRepository : IInvoiceRepository
         return await _context.Invoices
             .Where(i => i.ClientId == clientId)
             .Include(i => i.LineItems)
+            .AsNoTracking()
             .ToListAsync(cancellationToken);
     }
 }
