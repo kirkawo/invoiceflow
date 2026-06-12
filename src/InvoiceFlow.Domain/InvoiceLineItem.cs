@@ -7,6 +7,8 @@ public class InvoiceLineItem
     public decimal UnitPrice { get; }
     public decimal Amount => Quantity * UnitPrice;
 
+    private InvoiceLineItem() => Description = null!;
+
     public InvoiceLineItem(string description, decimal quantity, decimal unitPrice)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(description);
