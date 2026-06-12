@@ -51,6 +51,34 @@ app.UseAuthorization();
 app.UseStaticFiles();
 app.UseAntiforgery();
 
+app.MapPost("/auth/login", async (HttpContext context, SignInManager<ApplicationUser> signInManager) =>
+{
+    var form = await context.Request.ReadFormAsync();
+    var email = form["email"].FirstOrDefault();
+    var password = form["password"].FirstOrDefault();
+    var returnUrl = form["returnUrl"].FirstOrDefault() ?? "/";
+
+    if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+    {
+        return Results.Redirect($"/login?error={Uri.EscapeDataString("Email and password are required.")}&returnUrl={Uri.EscapeDataString(returnUrl)}");
+    }
+
+    var result = await signInManager.PasswordSignInAsync(email, password, true, false);
+
+    if (result.Succeeded)
+    {
+        return Results.Redirect(returnUrl);
+    }
+
+    return Results.Redirect($"/login?error={Uri.EscapeDataString("Invalid email or password.")}&returnUrl={Uri.EscapeDataString(returnUrl)}");
+});
+
+app.MapPost("/auth/logout", async (SignInManager<ApplicationUser> signInManager) =>
+{
+    await signInManager.SignOutAsync();
+    return Results.Redirect("/login");
+}).RequireAuthorization();
+
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 

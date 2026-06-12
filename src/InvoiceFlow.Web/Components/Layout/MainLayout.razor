@@ -1,8 +1,4 @@
 ﻿@using Microsoft.AspNetCore.Components.Authorization
-@using Microsoft.AspNetCore.Identity
-@using InvoiceFlow.Infrastructure.Persistence
-@inject SignInManager<ApplicationUser> SignInManager
-@inject NavigationManager Navigation
 @inherits LayoutComponentBase
 
 <AuthorizeView>
@@ -15,7 +11,9 @@
             <main>
                 <div class="top-row px-4">
                     <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-                    <button @onclick="Logout" class="btn btn-outline-secondary btn-sm ms-auto">Logout</button>
+                    <form method="post" action="/auth/logout" class="ms-auto">
+                        <button type="submit" class="btn btn-outline-secondary btn-sm">Logout</button>
+                    </form>
                 </div>
                 <article class="content px-4">
                     @Body
@@ -39,11 +37,3 @@
     <a href="" class="reload">Reload</a>
     <a class="dismiss">🗙</a>
 </div>
-
-@code {
-    private async Task Logout()
-    {
-        await SignInManager.SignOutAsync();
-        Navigation.NavigateTo("/login", forceLoad: true);
-    }
-}

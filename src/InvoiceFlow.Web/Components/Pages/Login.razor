@@ -1,52 +1,47 @@
 @page "/login"
-@rendermode InteractiveServer
-@using Microsoft.AspNetCore.Identity
-@using InvoiceFlow.Infrastructure.Persistence
-@inject SignInManager<ApplicationUser> SignInManager
-@inject NavigationManager Navigation
+@attribute [AllowAnonymous]
 
 <PageTitle>Login - InvoiceFlow</PageTitle>
 
 <h1>Login</h1>
 
-@if (error is not null)
+@if (!string.IsNullOrEmpty(error))
 {
     <div class="alert alert-danger">@error</div>
 }
 
-<EditForm Model="@model" OnValidSubmit="@HandleLogin">
+<form method="post" action="/auth/login">
+    <input type="hidden" name="returnUrl" value="@returnUrl" />
     <div class="mb-3">
         <label for="email" class="form-label">Email</label>
-        <InputText id="email" class="form-control" @bind-Value="model.Email" />
+        <input id="email" name="email" class="form-control" />
     </div>
     <div class="mb-3">
         <label for="password" class="form-label">Password</label>
-        <InputText id="password" type="password" class="form-control" @bind-Value="model.Password" />
+        <input id="password" name="password" type="password" class="form-control" />
     </div>
     <button type="submit" class="btn btn-primary">Login</button>
-</EditForm>
+</form>
 
 @code {
-    private LoginModel model = new();
+    [SupplyParameterFromQuery]
+    public string? Error { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? ReturnUrl { get; set; }
+
     private string? error;
+    private string returnUrl = "/";
 
-    private async Task HandleLogin()
+    protected override void OnInitialized()
     {
-        error = null;
-        var result = await SignInManager.PasswordSignInAsync(model.Email, model.Password, true, false);
-        if (result.Succeeded)
+        if (!string.IsNullOrEmpty(Error))
         {
-            Navigation.NavigateTo("/");
+            error = Error;
         }
-        else
+        if (!string.IsNullOrEmpty(ReturnUrl))
         {
-            error = "Invalid email or password.";
+            returnUrl = ReturnUrl;
         }
-    }
-
-    private class LoginModel
-    {
-        public string Email { get; set; } = string.Empty;
-        public string Password { get; set; } = string.Empty;
     }
 }
