@@ -6,6 +6,7 @@ namespace InvoiceFlow.UnitTests;
 
 public class InvoiceServiceTests
 {
+    private static readonly Guid TestWorkspaceId = Guid.NewGuid();
     private readonly InvoiceService _service;
     private readonly FakeInvoiceRepository _invoiceRepository;
     private readonly FakeClientRepository _clientRepository;
@@ -14,12 +15,12 @@ public class InvoiceServiceTests
     {
         _invoiceRepository = new FakeInvoiceRepository();
         _clientRepository = new FakeClientRepository();
-        _service = new InvoiceService(_invoiceRepository, _clientRepository);
+        _service = new InvoiceService(_invoiceRepository, _clientRepository, new FakeCurrentWorkspaceService());
     }
 
     private async Task<Guid> CreateClientAsync(string name = "Client")
     {
-        var client = new Client(name, $"{name.ToLower()}@example.com");
+        var client = new Client(TestWorkspaceId, name, $"{name.ToLower()}@example.com");
         await _clientRepository.AddAsync(client);
         return client.Id;
     }

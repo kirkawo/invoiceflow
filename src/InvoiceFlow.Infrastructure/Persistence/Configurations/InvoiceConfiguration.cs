@@ -11,6 +11,7 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         builder.ToTable("Invoices");
         builder.HasKey(i => i.Id);
         builder.Property(i => i.Id).ValueGeneratedNever();
+        builder.Property(i => i.WorkspaceId).IsRequired();
         builder.Property(i => i.ClientId).IsRequired();
         builder.Property(i => i.Number).HasMaxLength(50).IsRequired();
         builder.Property(i => i.IssueDateUtc).IsRequired();
@@ -41,6 +42,8 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
             .HasForeignKey(i => i.ClientId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        builder.HasIndex(i => i.WorkspaceId);
+        builder.HasIndex(i => new { i.WorkspaceId, i.ClientId });
         builder.HasIndex(i => i.ClientId).HasDatabaseName("IX_Invoices_ClientId");
         builder.HasIndex(i => i.Number).HasDatabaseName("IX_Invoices_Number");
     }

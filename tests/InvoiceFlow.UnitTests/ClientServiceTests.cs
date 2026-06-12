@@ -6,13 +6,14 @@ namespace InvoiceFlow.UnitTests;
 
 public class ClientServiceTests
 {
+    private static readonly Guid TestWorkspaceId = Guid.NewGuid();
     private readonly ClientService _service;
     private readonly FakeClientRepository _repository;
 
     public ClientServiceTests()
     {
         _repository = new FakeClientRepository();
-        _service = new ClientService(_repository);
+        _service = new ClientService(_repository, new FakeCurrentWorkspaceService());
     }
 
     [Fact]
@@ -89,4 +90,9 @@ public class FakeClientRepository : IClientRepository
 
     public Task<IReadOnlyList<Client>> ListAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<Client>>(_store.Values.ToList().AsReadOnly());
+}
+
+public class FakeCurrentWorkspaceService : ICurrentWorkspaceService
+{
+    public Guid WorkspaceId { get; set; } = Guid.NewGuid();
 }

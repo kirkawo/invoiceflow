@@ -1,0 +1,52 @@
+@page "/login"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Identity
+@using InvoiceFlow.Infrastructure.Persistence
+@inject SignInManager<ApplicationUser> SignInManager
+@inject NavigationManager Navigation
+
+<PageTitle>Login - InvoiceFlow</PageTitle>
+
+<h1>Login</h1>
+
+@if (error is not null)
+{
+    <div class="alert alert-danger">@error</div>
+}
+
+<EditForm Model="@model" OnValidSubmit="@HandleLogin">
+    <div class="mb-3">
+        <label for="email" class="form-label">Email</label>
+        <InputText id="email" class="form-control" @bind-Value="model.Email" />
+    </div>
+    <div class="mb-3">
+        <label for="password" class="form-label">Password</label>
+        <InputText id="password" type="password" class="form-control" @bind-Value="model.Password" />
+    </div>
+    <button type="submit" class="btn btn-primary">Login</button>
+</EditForm>
+
+@code {
+    private LoginModel model = new();
+    private string? error;
+
+    private async Task HandleLogin()
+    {
+        error = null;
+        var result = await SignInManager.PasswordSignInAsync(model.Email, model.Password, true, false);
+        if (result.Succeeded)
+        {
+            Navigation.NavigateTo("/");
+        }
+        else
+        {
+            error = "Invalid email or password.";
+        }
+    }
+
+    private class LoginModel
+    {
+        public string Email { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+    }
+}

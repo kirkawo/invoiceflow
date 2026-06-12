@@ -7,8 +7,10 @@ public class InvoiceTests
     private static readonly Guid ClientId = Guid.NewGuid();
     private static readonly DateTime IssueDate = new(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
 
+    private static readonly Guid WorkspaceId = Guid.NewGuid();
+
     private Invoice CreateInvoice(DateTime? dueDate = null) =>
-        new(ClientId, "INV-001", IssueDate, dueDate ?? IssueDate.AddDays(30), "USD");
+        new(WorkspaceId, ClientId, "INV-001", IssueDate, dueDate ?? IssueDate.AddDays(30), "USD");
 
     private static InvoiceLineItem Line(string desc, decimal qty, decimal price) =>
         new(desc, qty, price);

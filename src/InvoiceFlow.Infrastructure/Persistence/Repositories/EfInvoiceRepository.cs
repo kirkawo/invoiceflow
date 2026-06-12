@@ -7,10 +7,12 @@ namespace InvoiceFlow.Infrastructure.Persistence.Repositories;
 public class EfInvoiceRepository : IInvoiceRepository
 {
     private readonly InvoiceFlowDbContext _context;
+    private readonly ICurrentWorkspaceService _workspaceService;
 
-    public EfInvoiceRepository(InvoiceFlowDbContext context)
+    public EfInvoiceRepository(InvoiceFlowDbContext context, ICurrentWorkspaceService workspaceService)
     {
         _context = context;
+        _workspaceService = workspaceService;
     }
 
     public async Task<Invoice?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
@@ -18,7 +20,7 @@ public class EfInvoiceRepository : IInvoiceRepository
         return await _context.Invoices
             .Include(i => i.LineItems)
             .AsNoTracking()
-            .FirstOrDefaultAsync(i => i.Id == id, cancellationToken);
+            .FirstOrDefaultAsync(i => i.WorkspaceId == _workspaceService.WorkspaceId && i.Id == id, cancellationToken);
     }
 
     public async Task AddAsync(Invoice invoice, CancellationToken cancellationToken = default)
@@ -36,7 +38,7 @@ public class EfInvoiceRepository : IInvoiceRepository
     public async Task<IReadOnlyList<Invoice>> ListByClientAsync(Guid clientId, CancellationToken cancellationToken = default)
     {
         return await _context.Invoices
-            .Where(i => i.ClientId == clientId)
+            .Where(i => i.WorkspaceId == _workspaceService.WorkspaceId && i.ClientId == clientId)
             .Include(i => i.LineItems)
             .AsNoTracking()
             .ToListAsync(cancellationToken);

@@ -11,10 +11,14 @@ public class ClientConfiguration : IEntityTypeConfiguration<Client>
         builder.ToTable("Clients");
         builder.HasKey(c => c.Id);
         builder.Property(c => c.Id).ValueGeneratedNever();
+        builder.Property(c => c.WorkspaceId).IsRequired();
         builder.Property(c => c.Name).HasMaxLength(200).IsRequired();
         builder.Property(c => c.Email).HasMaxLength(200).IsRequired();
         builder.Property(c => c.CompanyName).HasMaxLength(200);
         builder.Property(c => c.CreatedAtUtc).IsRequired();
         builder.Property(c => c.IsArchived).IsRequired();
+
+        builder.HasIndex(c => c.WorkspaceId);
+        builder.HasIndex(c => new { c.WorkspaceId, c.Name });
     }
 }

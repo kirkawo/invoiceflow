@@ -7,7 +7,7 @@ public static class InvoiceEndpoints
 {
     public static IEndpointRouteBuilder MapInvoiceEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/invoices");
+        var group = app.MapGroup("/api/invoices").RequireAuthorization();
 
         group.MapPost("/", async (CreateInvoiceDraftRequest request, InvoiceService invoiceService) =>
         {
@@ -44,7 +44,7 @@ public static class InvoiceEndpoints
 
     public static IEndpointRouteBuilder MapClientInvoiceEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapGroup("/api/clients")
+        app.MapGroup("/api/clients").RequireAuthorization()
             .MapGet("/{clientId:guid}/invoices", async (Guid clientId, InvoiceService invoiceService) =>
             {
                 var invoices = await invoiceService.GetClientInvoicesAsync(clientId);

@@ -7,15 +7,19 @@ namespace InvoiceFlow.Infrastructure.Persistence.Repositories;
 public class EfClientRepository : IClientRepository
 {
     private readonly InvoiceFlowDbContext _context;
+    private readonly ICurrentWorkspaceService _workspaceService;
 
-    public EfClientRepository(InvoiceFlowDbContext context)
+    public EfClientRepository(InvoiceFlowDbContext context, ICurrentWorkspaceService workspaceService)
     {
         _context = context;
+        _workspaceService = workspaceService;
     }
 
     public async Task<Client?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        return await _context.Clients.FindAsync([id], cancellationToken);
+        return await _context.Clients
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.WorkspaceId == _workspaceService.WorkspaceId && c.Id == id, cancellationToken);
     }
 
     public async Task AddAsync(Client client, CancellationToken cancellationToken = default)
@@ -26,6 +30,9 @@ public class EfClientRepository : IClientRepository
 
     public async Task<IReadOnlyList<Client>> ListAsync(CancellationToken cancellationToken = default)
     {
-        return await _context.Clients.AsNoTracking().ToListAsync(cancellationToken);
+        return await _context.Clients
+            .Where(c => c.WorkspaceId == _workspaceService.WorkspaceId)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
     }
 }

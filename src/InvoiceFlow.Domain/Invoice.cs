@@ -5,6 +5,7 @@ public class Invoice
     private readonly List<InvoiceLineItem> _lineItems = [];
 
     public Guid Id { get; }
+    public Guid WorkspaceId { get; private set; }
     public Guid ClientId { get; }
     public string Number { get; }
     public DateTime IssueDateUtc { get; }
@@ -17,6 +18,7 @@ public class Invoice
     public decimal Total => Subtotal;
 
     public Invoice(
+        Guid workspaceId,
         Guid clientId,
         string number,
         DateTime issueDateUtc,
@@ -31,6 +33,7 @@ public class Invoice
         ArgumentException.ThrowIfNullOrWhiteSpace(currency);
 
         Id = Guid.NewGuid();
+        WorkspaceId = workspaceId;
         ClientId = clientId;
         Number = number;
         IssueDateUtc = issueDateUtc;

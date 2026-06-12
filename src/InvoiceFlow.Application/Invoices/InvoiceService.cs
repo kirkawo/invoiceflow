@@ -7,11 +7,13 @@ public class InvoiceService
 {
     private readonly IInvoiceRepository _invoiceRepository;
     private readonly IClientRepository _clientRepository;
+    private readonly ICurrentWorkspaceService _workspaceService;
 
-    public InvoiceService(IInvoiceRepository invoiceRepository, IClientRepository clientRepository)
+    public InvoiceService(IInvoiceRepository invoiceRepository, IClientRepository clientRepository, ICurrentWorkspaceService workspaceService)
     {
         _invoiceRepository = invoiceRepository;
         _clientRepository = clientRepository;
+        _workspaceService = workspaceService;
     }
 
     public async Task<Guid> CreateInvoiceDraftAsync(
@@ -33,7 +35,7 @@ public class InvoiceService
         if (clientExists is null)
             throw new InvalidOperationException($"Client with ID '{clientId}' not found.");
 
-        var invoice = new Invoice(clientId, number, issueDateUtc, dueDateUtc, currency, notes);
+        var invoice = new Invoice(_workspaceService.WorkspaceId, clientId, number, issueDateUtc, dueDateUtc, currency, notes);
         await _invoiceRepository.AddAsync(invoice, cancellationToken);
         return invoice.Id;
     }
