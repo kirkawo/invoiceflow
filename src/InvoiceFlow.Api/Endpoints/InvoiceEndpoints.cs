@@ -7,7 +7,7 @@ public static class InvoiceEndpoints
 {
     public static IEndpointRouteBuilder MapInvoiceEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/invoices");
+        var group = app.MapGroup("/api/invoices").RequireAuthorization();
 
         group.MapPost("/", async (CreateInvoiceDraftRequest request, InvoiceService invoiceService) =>
         {
@@ -39,12 +39,64 @@ public static class InvoiceEndpoints
             return invoice is not null ? Results.Ok(invoice) : Results.NotFound();
         });
 
+        group.MapPost("/{id:guid}/issue", async (Guid id, InvoiceService invoiceService) =>
+        {
+            try
+            {
+                await invoiceService.IssueInvoiceAsync(id);
+                return Results.Ok();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        group.MapPost("/{id:guid}/mark-paid", async (Guid id, InvoiceService invoiceService) =>
+        {
+            try
+            {
+                await invoiceService.MarkInvoicePaidAsync(id);
+                return Results.Ok();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        group.MapPost("/{id:guid}/mark-overdue", async (Guid id, InvoiceService invoiceService) =>
+        {
+            try
+            {
+                await invoiceService.MarkInvoiceOverdueAsync(id);
+                return Results.Ok();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        group.MapPost("/{id:guid}/cancel", async (Guid id, InvoiceService invoiceService) =>
+        {
+            try
+            {
+                await invoiceService.CancelInvoiceAsync(id);
+                return Results.Ok();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
         return app;
     }
 
     public static IEndpointRouteBuilder MapClientInvoiceEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapGroup("/api/clients")
+        app.MapGroup("/api/clients").RequireAuthorization()
             .MapGet("/{clientId:guid}/invoices", async (Guid clientId, InvoiceService invoiceService) =>
             {
                 var invoices = await invoiceService.GetClientInvoicesAsync(clientId);

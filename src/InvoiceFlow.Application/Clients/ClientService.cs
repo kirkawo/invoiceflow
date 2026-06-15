@@ -6,10 +6,12 @@ namespace InvoiceFlow.Application.Clients;
 public class ClientService
 {
     private readonly IClientRepository _clientRepository;
+    private readonly ICurrentWorkspaceService _workspaceService;
 
-    public ClientService(IClientRepository clientRepository)
+    public ClientService(IClientRepository clientRepository, ICurrentWorkspaceService workspaceService)
     {
         _clientRepository = clientRepository;
+        _workspaceService = workspaceService;
     }
 
     public async Task<Guid> CreateClientAsync(
@@ -18,7 +20,7 @@ public class ClientService
         string? companyName,
         CancellationToken cancellationToken = default)
     {
-        var client = new Client(name, email, companyName);
+        var client = new Client(_workspaceService.WorkspaceId, name, email, companyName);
         await _clientRepository.AddAsync(client, cancellationToken);
         return client.Id;
     }
