@@ -43,5 +43,4 @@ public class ApiWebApplicationFactory : WebApplicationFactory<Program>
 public class FakeCurrentWorkspaceService : ICurrentWorkspaceService
 {
     public Guid WorkspaceId => new("11111111-1111-1111-1111-111111111111");
-    public void SetWorkspaceId(Guid id) { }
 }

@@ -1,12 +1,28 @@
+using System.Security.Claims;
 using InvoiceFlow.Application.Abstractions;
+using Microsoft.AspNetCore.Http;
 
 namespace InvoiceFlow.Infrastructure.Persistence;
 
 public class CurrentWorkspaceService : ICurrentWorkspaceService
 {
-    private Guid? _workspaceId;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
-    public Guid WorkspaceId => _workspaceId ?? throw new UnauthorizedAccessException("Workspace has not been initialized.");
+    public CurrentWorkspaceService(IHttpContextAccessor httpContextAccessor)
+    {
+        _httpContextAccessor = httpContextAccessor;
+    }
 
-    public void SetWorkspaceId(Guid id) => _workspaceId = id;
+    public Guid WorkspaceId
+    {
+        get
+        {
+            var claim = _httpContextAccessor.HttpContext?.User.FindFirst("WorkspaceId");
+            if (claim is null || !Guid.TryParse(claim.Value, out var workspaceId))
+            {
+                throw new UnauthorizedAccessException("Workspace has not been initialized.");
+            }
+            return workspaceId;
+        }
+    }
 }

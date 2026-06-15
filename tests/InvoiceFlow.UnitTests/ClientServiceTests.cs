@@ -95,5 +95,4 @@ public class FakeClientRepository : IClientRepository
 public class FakeCurrentWorkspaceService : ICurrentWorkspaceService
 {
     public Guid WorkspaceId { get; set; } = Guid.NewGuid();
-    public void SetWorkspaceId(Guid id) => WorkspaceId = id;
 }

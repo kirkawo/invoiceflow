@@ -16,6 +16,7 @@ public static class ServiceCollectionExtensions
         services.AddDbContext<InvoiceFlowDbContext>(options =>
             options.UseNpgsql(connectionString));
 
+        services.AddHttpContextAccessor();
         services.AddScoped<ICurrentWorkspaceService, CurrentWorkspaceService>();
 
         services.AddScoped<IClientRepository, EfClientRepository>();
