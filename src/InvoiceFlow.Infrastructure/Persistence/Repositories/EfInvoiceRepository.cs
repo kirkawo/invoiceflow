@@ -20,7 +20,6 @@ public class EfInvoiceRepository : IInvoiceRepository
         var workspaceId = _workspaceService.WorkspaceId;
         return await _context.Invoices
             .Include(i => i.LineItems)
-            .AsNoTracking()
             .FirstOrDefaultAsync(i => i.WorkspaceId == workspaceId && i.Id == id, cancellationToken);
     }
 
@@ -32,7 +31,6 @@ public class EfInvoiceRepository : IInvoiceRepository
 
     public async Task UpdateAsync(Invoice invoice, CancellationToken cancellationToken = default)
     {
-        _context.Invoices.Update(invoice);
         await _context.SaveChangesAsync(cancellationToken);
     }
 
