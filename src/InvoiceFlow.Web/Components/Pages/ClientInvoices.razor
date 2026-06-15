@@ -42,6 +42,7 @@ else
                     <th>Currency</th>
                     <th>Total</th>
                     <th>Due Date</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -63,6 +64,24 @@ else
                         <td>@invoice.Currency</td>
                         <td>@invoice.Total.ToString("F2")</td>
                         <td>@invoice.DueDateUtc.ToShortDateString()</td>
+                        <td>
+                            @if (invoice.Status == InvoiceStatus.Draft)
+                            {
+                                <button class="btn btn-sm btn-primary" @onclick="() => IssueInvoice(invoice.Id)" disabled="@loadingActions.Contains(invoice.Id)">Issue</button>
+                                <button class="btn btn-sm btn-danger" @onclick="() => CancelInvoice(invoice.Id)" disabled="@loadingActions.Contains(invoice.Id)">Cancel</button>
+                            }
+                            @if (invoice.Status == InvoiceStatus.Issued)
+                            {
+                                <button class="btn btn-sm btn-success" @onclick="() => MarkPaid(invoice.Id)" disabled="@loadingActions.Contains(invoice.Id)">Mark Paid</button>
+                                <button class="btn btn-sm btn-warning" @onclick="() => MarkOverdue(invoice.Id)" disabled="@loadingActions.Contains(invoice.Id)">Mark Overdue</button>
+                                <button class="btn btn-sm btn-danger" @onclick="() => CancelInvoice(invoice.Id)" disabled="@loadingActions.Contains(invoice.Id)">Cancel</button>
+                            }
+                            @if (invoice.Status == InvoiceStatus.Overdue)
+                            {
+                                <button class="btn btn-sm btn-success" @onclick="() => MarkPaid(invoice.Id)" disabled="@loadingActions.Contains(invoice.Id)">Mark Paid</button>
+                                <button class="btn btn-sm btn-danger" @onclick="() => CancelInvoice(invoice.Id)" disabled="@loadingActions.Contains(invoice.Id)">Cancel</button>
+                            }
+                        </td>
                     </tr>
                 }
             </tbody>
@@ -74,6 +93,7 @@ else
     private IReadOnlyList<InvoiceDto>? invoices;
     private string? clientName;
     private string? error;
+    private HashSet<Guid> loadingActions = [];
 
     [Parameter]
     public Guid ClientId { get; set; }
@@ -102,4 +122,36 @@ else
         var loaded = await InvoiceService.GetClientInvoicesAsync(ClientId);
         invoices = loaded.OrderByDescending(i => i.DueDateUtc).ToList().AsReadOnly();
     }
+
+    private async Task ExecuteAction(Guid invoiceId, Func<Task> action)
+    {
+        loadingActions.Add(invoiceId);
+        error = null;
+
+        try
+        {
+            await action();
+            await LoadInvoicesAsync();
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            loadingActions.Remove(invoiceId);
+        }
+    }
+
+    private Task IssueInvoice(Guid id) =>
+        ExecuteAction(id, () => InvoiceService.IssueInvoiceAsync(id));
+
+    private Task MarkPaid(Guid id) =>
+        ExecuteAction(id, () => InvoiceService.MarkInvoicePaidAsync(id));
+
+    private Task MarkOverdue(Guid id) =>
+        ExecuteAction(id, () => InvoiceService.MarkInvoiceOverdueAsync(id));
+
+    private Task CancelInvoice(Guid id) =>
+        ExecuteAction(id, () => InvoiceService.CancelInvoiceAsync(id));
 }

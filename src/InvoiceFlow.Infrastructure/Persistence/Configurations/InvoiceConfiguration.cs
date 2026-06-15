@@ -22,6 +22,9 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
             .IsRequired();
         builder.Property(i => i.Currency).HasMaxLength(3).IsRequired();
         builder.Property(i => i.Notes).HasMaxLength(2000);
+        builder.Property(i => i.IssuedAtUtc);
+        builder.Property(i => i.PaidAtUtc);
+        builder.Property(i => i.CancelledAtUtc);
         builder.Ignore(i => i.Subtotal);
         builder.Ignore(i => i.Total);
 

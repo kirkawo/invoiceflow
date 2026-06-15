@@ -54,6 +54,46 @@ public class InvoiceService
         return invoices.Select(MapToDto).ToList().AsReadOnly();
     }
 
+    public async Task IssueInvoiceAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var invoice = await _invoiceRepository.GetByIdAsync(id, cancellationToken);
+        if (invoice is null)
+            throw new InvalidOperationException($"Invoice with ID '{id}' not found.");
+
+        invoice.Issue();
+        await _invoiceRepository.UpdateAsync(invoice, cancellationToken);
+    }
+
+    public async Task MarkInvoicePaidAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var invoice = await _invoiceRepository.GetByIdAsync(id, cancellationToken);
+        if (invoice is null)
+            throw new InvalidOperationException($"Invoice with ID '{id}' not found.");
+
+        invoice.MarkPaid();
+        await _invoiceRepository.UpdateAsync(invoice, cancellationToken);
+    }
+
+    public async Task MarkInvoiceOverdueAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var invoice = await _invoiceRepository.GetByIdAsync(id, cancellationToken);
+        if (invoice is null)
+            throw new InvalidOperationException($"Invoice with ID '{id}' not found.");
+
+        invoice.MarkOverdue();
+        await _invoiceRepository.UpdateAsync(invoice, cancellationToken);
+    }
+
+    public async Task CancelInvoiceAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var invoice = await _invoiceRepository.GetByIdAsync(id, cancellationToken);
+        if (invoice is null)
+            throw new InvalidOperationException($"Invoice with ID '{id}' not found.");
+
+        invoice.Cancel();
+        await _invoiceRepository.UpdateAsync(invoice, cancellationToken);
+    }
+
     private static InvoiceDto MapToDto(Invoice invoice) =>
         new()
         {
@@ -64,6 +104,10 @@ public class InvoiceService
             DueDateUtc = invoice.DueDateUtc,
             Status = invoice.Status,
             Currency = invoice.Currency,
-            Total = invoice.Total
+            Total = invoice.Total,
+            Notes = invoice.Notes,
+            IssuedAtUtc = invoice.IssuedAtUtc,
+            PaidAtUtc = invoice.PaidAtUtc,
+            CancelledAtUtc = invoice.CancelledAtUtc
         };
 }

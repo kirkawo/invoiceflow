@@ -4,18 +4,23 @@ public class Invoice
 {
     private readonly List<InvoiceLineItem> _lineItems = [];
 
-    public Guid Id { get; }
+    public Guid Id { get; private set; }
     public Guid WorkspaceId { get; private set; }
-    public Guid ClientId { get; }
-    public string Number { get; }
-    public DateTime IssueDateUtc { get; }
-    public DateTime DueDateUtc { get; }
+    public Guid ClientId { get; private set; }
+    public string Number { get; private set; }
+    public DateTime IssueDateUtc { get; private set; }
+    public DateTime DueDateUtc { get; private set; }
     public InvoiceStatus Status { get; private set; }
-    public string Currency { get; }
-    public string? Notes { get; }
+    public string Currency { get; private set; }
+    public string? Notes { get; set; }
+    public DateTime? IssuedAtUtc { get; private set; }
+    public DateTime? PaidAtUtc { get; private set; }
+    public DateTime? CancelledAtUtc { get; private set; }
     public IReadOnlyList<InvoiceLineItem> LineItems => _lineItems.AsReadOnly();
     public decimal Subtotal => _lineItems.Sum(li => li.Amount);
     public decimal Total => Subtotal;
+
+    private Invoice() => (Number, Currency) = (null!, null!);
 
     public Invoice(
         Guid workspaceId,
@@ -45,37 +50,85 @@ public class Invoice
 
     public void AddLineItem(InvoiceLineItem item)
     {
+        EnsureDraft();
         ArgumentNullException.ThrowIfNull(item);
         _lineItems.Add(item);
     }
 
     public bool RemoveLineItem(InvoiceLineItem item)
     {
+        EnsureDraft();
         ArgumentNullException.ThrowIfNull(item);
         return _lineItems.Remove(item);
     }
 
+    public void UpdateDraft(
+        Guid clientId,
+        string number,
+        DateTime issueDateUtc,
+        DateTime dueDateUtc,
+        string currency)
+    {
+        EnsureDraft();
+        ArgumentException.ThrowIfNullOrWhiteSpace(number);
+        ArgumentException.ThrowIfNullOrWhiteSpace(currency);
+        if (dueDateUtc < issueDateUtc)
+            throw new ArgumentException("Due date cannot be earlier than issue date.", nameof(dueDateUtc));
+
+        ClientId = clientId;
+        Number = number;
+        IssueDateUtc = issueDateUtc;
+        DueDateUtc = dueDateUtc;
+        Currency = currency;
+    }
+
     public void Issue()
     {
+        if (Status != InvoiceStatus.Draft)
+            throw new InvalidOperationException("Only draft invoices can be issued.");
+
         if (_lineItems.Count == 0)
             throw new InvalidOperationException("Cannot issue an invoice without at least one line item.");
 
         Status = InvoiceStatus.Issued;
+        IssuedAtUtc = DateTime.UtcNow;
     }
 
-    public void MarkAsPaid()
+    public void MarkPaid()
     {
+        if (Status == InvoiceStatus.Paid)
+            throw new InvalidOperationException("Invoice is already paid.");
         if (Status == InvoiceStatus.Cancelled)
             throw new InvalidOperationException("Cannot mark a cancelled invoice as paid.");
+        if (Status == InvoiceStatus.Draft)
+            throw new InvalidOperationException("Cannot mark a draft invoice as paid. Issue it first.");
 
         Status = InvoiceStatus.Paid;
+        PaidAtUtc = DateTime.UtcNow;
+    }
+
+    public void MarkOverdue()
+    {
+        if (Status != InvoiceStatus.Issued)
+            throw new InvalidOperationException("Only issued invoices can be marked overdue.");
+
+        Status = InvoiceStatus.Overdue;
     }
 
     public void Cancel()
     {
         if (Status == InvoiceStatus.Paid)
             throw new InvalidOperationException("Cannot cancel a paid invoice.");
+        if (Status == InvoiceStatus.Cancelled)
+            throw new InvalidOperationException("Invoice is already cancelled.");
 
         Status = InvoiceStatus.Cancelled;
+        CancelledAtUtc = DateTime.UtcNow;
+    }
+
+    private void EnsureDraft()
+    {
+        if (Status != InvoiceStatus.Draft)
+            throw new InvalidOperationException($"Cannot modify a {Status.ToString().ToLower()} invoice.");
     }
 }
