@@ -2,7 +2,6 @@ namespace InvoiceFlow.Domain;
 
 public class Invoice
 {
-    private static int _nextTempId = -1;
     private readonly List<InvoiceLineItem> _lineItems = [];
 
     public Guid Id { get; private set; }
@@ -52,8 +51,7 @@ public class Invoice
     public void AddLineItem(string description, decimal quantity, decimal unitPrice)
     {
         EnsureDraft();
-        var tempId = Interlocked.Decrement(ref _nextTempId);
-        var item = new InvoiceLineItem(tempId, description, quantity, unitPrice);
+        var item = new InvoiceLineItem(description, quantity, unitPrice);
         _lineItems.Add(item);
     }
 

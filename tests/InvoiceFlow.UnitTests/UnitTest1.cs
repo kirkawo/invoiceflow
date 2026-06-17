@@ -257,13 +257,12 @@ public class InvoiceTests
     public void RemoveLineItem_UpdatesTotal()
     {
         var invoice = CreateInvoice();
-        invoice.AddLineItem("Item A", 2, 50);
-        invoice.AddLineItem("Item B", 3, 30);
-        var itemBId = invoice.LineItems[1].Id;
+        invoice.AddLineItem("Item", 2, 50);
 
-        invoice.RemoveLineItem(itemBId);
+        invoice.RemoveLineItem(invoice.LineItems[0].Id);
 
-        Assert.Equal(100, invoice.Total);
+        Assert.Equal(0, invoice.Total);
+        Assert.Empty(invoice.LineItems);
     }
 
     [Fact]

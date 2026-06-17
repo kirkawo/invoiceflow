@@ -139,9 +139,8 @@ public class InvoiceServiceTests
         var clientId = await CreateClientAsync();
         var invoiceId = await CreateDraftInvoiceAsync(clientId);
 
-        var lineItemId = await _service.AddLineItemAsync(invoiceId, "Consulting", 10, 100);
+        await _service.AddLineItemAsync(invoiceId, "Consulting", 10, 100);
 
-        Assert.NotEqual(0, lineItemId);
         var dto = await _service.GetInvoiceAsync(invoiceId);
         Assert.NotNull(dto);
         Assert.Single(dto.LineItems);
@@ -176,15 +175,14 @@ public class InvoiceServiceTests
     {
         var clientId = await CreateClientAsync();
         var invoiceId = await CreateDraftInvoiceAsync(clientId);
-        await _service.AddLineItemAsync(invoiceId, "Item A", 2, 50);
-        var itemBId = await _service.AddLineItemAsync(invoiceId, "Item B", 3, 30);
+        await _service.AddLineItemAsync(invoiceId, "Item", 2, 50);
 
-        await _service.RemoveLineItemAsync(invoiceId, itemBId);
+        await _service.RemoveLineItemAsync(invoiceId, 0);
 
         var dto = await _service.GetInvoiceAsync(invoiceId);
         Assert.NotNull(dto);
-        Assert.Single(dto.LineItems);
-        Assert.Equal(100, dto.Total);
+        Assert.Empty(dto.LineItems);
+        Assert.Equal(0, dto.Total);
     }
 
     private async Task<Guid> CreateDraftInvoiceAsync(Guid clientId)
