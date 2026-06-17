@@ -91,6 +91,53 @@ public static class InvoiceEndpoints
             }
         });
 
+        group.MapPost("/{id:guid}/line-items", async (Guid id, AddLineItemRequest request, InvoiceService invoiceService) =>
+        {
+            try
+            {
+                var lineItemId = await invoiceService.AddLineItemAsync(id, request.Description, request.Quantity, request.UnitPrice);
+                return Results.Created($"/api/invoices/{id}/line-items/{lineItemId}", new { lineItemId });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        group.MapPut("/{id:guid}/line-items/{lineItemId:int}", async (Guid id, int lineItemId, UpdateLineItemRequest request, InvoiceService invoiceService) =>
+        {
+            try
+            {
+                await invoiceService.UpdateLineItemAsync(id, lineItemId, request.Description, request.Quantity, request.UnitPrice);
+                return Results.Ok();
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        group.MapDelete("/{id:guid}/line-items/{lineItemId:int}", async (Guid id, int lineItemId, InvoiceService invoiceService) =>
+        {
+            try
+            {
+                await invoiceService.RemoveLineItemAsync(id, lineItemId);
+                return Results.Ok();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
         return app;
     }
 

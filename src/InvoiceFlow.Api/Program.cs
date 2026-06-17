@@ -37,26 +37,29 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
+if (app.Environment.IsDevelopment())
 {
-    var context = scope.ServiceProvider.GetRequiredService<InvoiceFlowDbContext>();
-    await context.Database.MigrateAsync();
-
-    if (!await context.Workspaces.AnyAsync())
+    using (var scope = app.Services.CreateScope())
     {
-        var workspace = new Workspace("Default");
-        context.Workspaces.Add(workspace);
-        await context.SaveChangesAsync();
+        var context = scope.ServiceProvider.GetRequiredService<InvoiceFlowDbContext>();
+        await context.Database.MigrateAsync();
 
-        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-        var user = new ApplicationUser
+        if (!await context.Workspaces.AnyAsync())
         {
-            UserName = "admin@invoiceflow.dev",
-            Email = "admin@invoiceflow.dev",
-            EmailConfirmed = true,
-            WorkspaceId = workspace.Id
-        };
-        var result = await userManager.CreateAsync(user, "Admin123!");
+            var workspace = new Workspace("Default");
+            context.Workspaces.Add(workspace);
+            await context.SaveChangesAsync();
+
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var user = new ApplicationUser
+            {
+                UserName = "admin@invoiceflow.dev",
+                Email = "admin@invoiceflow.dev",
+                EmailConfirmed = true,
+                WorkspaceId = workspace.Id
+            };
+            var result = await userManager.CreateAsync(user, "Admin123!");
+        }
     }
 }
 

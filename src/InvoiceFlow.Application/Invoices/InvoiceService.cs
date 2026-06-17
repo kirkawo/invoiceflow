@@ -94,6 +94,58 @@ public class InvoiceService
         await _invoiceRepository.UpdateAsync(invoice, cancellationToken);
     }
 
+    public async Task<int> AddLineItemAsync(
+        Guid invoiceId,
+        string description,
+        decimal quantity,
+        decimal unitPrice,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(description);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(quantity);
+        ArgumentOutOfRangeException.ThrowIfNegative(unitPrice);
+
+        var invoice = await _invoiceRepository.GetByIdAsync(invoiceId, cancellationToken)
+            ?? throw new InvalidOperationException($"Invoice with ID '{invoiceId}' not found.");
+
+        invoice.AddLineItem(description, quantity, unitPrice);
+        await _invoiceRepository.UpdateAsync(invoice, cancellationToken);
+
+        var added = invoice.LineItems.Last();
+        return added.Id;
+    }
+
+    public async Task UpdateLineItemAsync(
+        Guid invoiceId,
+        int lineItemId,
+        string description,
+        decimal quantity,
+        decimal unitPrice,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(description);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(quantity);
+        ArgumentOutOfRangeException.ThrowIfNegative(unitPrice);
+
+        var invoice = await _invoiceRepository.GetByIdAsync(invoiceId, cancellationToken)
+            ?? throw new InvalidOperationException($"Invoice with ID '{invoiceId}' not found.");
+
+        invoice.UpdateLineItem(lineItemId, description, quantity, unitPrice);
+        await _invoiceRepository.UpdateAsync(invoice, cancellationToken);
+    }
+
+    public async Task RemoveLineItemAsync(
+        Guid invoiceId,
+        int lineItemId,
+        CancellationToken cancellationToken = default)
+    {
+        var invoice = await _invoiceRepository.GetByIdAsync(invoiceId, cancellationToken)
+            ?? throw new InvalidOperationException($"Invoice with ID '{invoiceId}' not found.");
+
+        invoice.RemoveLineItem(lineItemId);
+        await _invoiceRepository.UpdateAsync(invoice, cancellationToken);
+    }
+
     private static InvoiceDto MapToDto(Invoice invoice) =>
         new()
         {
@@ -108,6 +160,17 @@ public class InvoiceService
             Notes = invoice.Notes,
             IssuedAtUtc = invoice.IssuedAtUtc,
             PaidAtUtc = invoice.PaidAtUtc,
-            CancelledAtUtc = invoice.CancelledAtUtc
+            CancelledAtUtc = invoice.CancelledAtUtc,
+            LineItems = invoice.LineItems
+                .Select(li => new InvoiceLineItemDto
+                {
+                    Id = li.Id,
+                    Description = li.Description,
+                    Quantity = li.Quantity,
+                    UnitPrice = li.UnitPrice,
+                    Amount = li.Amount
+                })
+                .ToList()
+                .AsReadOnly()
         };
 }

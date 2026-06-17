@@ -16,4 +16,5 @@ public class InvoiceDto
     public DateTime? IssuedAtUtc { get; init; }
     public DateTime? PaidAtUtc { get; init; }
     public DateTime? CancelledAtUtc { get; init; }
+    public IReadOnlyList<InvoiceLineItemDto> LineItems { get; init; } = [];
 }

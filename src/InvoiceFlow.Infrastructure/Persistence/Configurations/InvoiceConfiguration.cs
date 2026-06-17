@@ -32,6 +32,7 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         {
             li.WithOwner().HasForeignKey("InvoiceId");
             li.ToTable("InvoiceLineItems");
+            li.Property(l => l.Id).ValueGeneratedOnAdd();
             li.Property(l => l.Description).HasMaxLength(500).IsRequired();
             li.Property(l => l.Quantity).HasPrecision(18, 2);
             li.Property(l => l.UnitPrice).HasPrecision(18, 2);

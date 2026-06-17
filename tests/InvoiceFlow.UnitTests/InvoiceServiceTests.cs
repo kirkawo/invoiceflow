@@ -132,6 +132,66 @@ public class InvoiceServiceTests
 
         Assert.Empty(invoices);
     }
+
+    [Fact]
+    public async Task AddLineItemAsync_AddsLineItemAndReturnsId()
+    {
+        var clientId = await CreateClientAsync();
+        var invoiceId = await CreateDraftInvoiceAsync(clientId);
+
+        var lineItemId = await _service.AddLineItemAsync(invoiceId, "Consulting", 10, 100);
+
+        Assert.NotEqual(0, lineItemId);
+        var dto = await _service.GetInvoiceAsync(invoiceId);
+        Assert.NotNull(dto);
+        Assert.Single(dto.LineItems);
+        Assert.Equal(1000, dto.Total);
+    }
+
+    [Fact]
+    public async Task AddLineItemAsync_Throws_WhenInvoiceNotFound()
+    {
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            _service.AddLineItemAsync(Guid.NewGuid(), "Item", 1, 100));
+    }
+
+    [Fact]
+    public async Task UpdateLineItemAsync_UpdatesLineItem()
+    {
+        var clientId = await CreateClientAsync();
+        var invoiceId = await CreateDraftInvoiceAsync(clientId);
+        var lineItemId = await _service.AddLineItemAsync(invoiceId, "Consulting", 10, 100);
+
+        await _service.UpdateLineItemAsync(invoiceId, lineItemId, "Premium Consulting", 5, 200);
+
+        var dto = await _service.GetInvoiceAsync(invoiceId);
+        Assert.NotNull(dto);
+        Assert.Single(dto.LineItems);
+        Assert.Equal("Premium Consulting", dto.LineItems[0].Description);
+        Assert.Equal(1000, dto.Total);
+    }
+
+    [Fact]
+    public async Task RemoveLineItemAsync_RemovesLineItem()
+    {
+        var clientId = await CreateClientAsync();
+        var invoiceId = await CreateDraftInvoiceAsync(clientId);
+        await _service.AddLineItemAsync(invoiceId, "Item A", 2, 50);
+        var itemBId = await _service.AddLineItemAsync(invoiceId, "Item B", 3, 30);
+
+        await _service.RemoveLineItemAsync(invoiceId, itemBId);
+
+        var dto = await _service.GetInvoiceAsync(invoiceId);
+        Assert.NotNull(dto);
+        Assert.Single(dto.LineItems);
+        Assert.Equal(100, dto.Total);
+    }
+
+    private async Task<Guid> CreateDraftInvoiceAsync(Guid clientId)
+    {
+        var issueDate = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
+        return await _service.CreateInvoiceDraftAsync(clientId, "INV-001", issueDate, issueDate.AddDays(30), "USD", null);
+    }
 }
 
 public class FakeInvoiceRepository : IInvoiceRepository

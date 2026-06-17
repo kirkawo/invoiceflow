@@ -49,7 +49,7 @@ else
                 @foreach (var invoice in invoices)
                 {
                     <tr>
-                        <td>@invoice.Number</td>
+                        <td><a href="/invoices/@invoice.Id">@invoice.Number</a></td>
                         <td>
                             <span class="badge @(invoice.Status switch
                             {
@@ -67,19 +67,26 @@ else
                         <td>
                             @if (invoice.Status == InvoiceStatus.Draft)
                             {
+                                <a href="/invoices/@invoice.Id" class="btn btn-sm btn-outline-primary me-1">Edit</a>
                                 <button class="btn btn-sm btn-primary" @onclick="() => IssueInvoice(invoice.Id)" disabled="@loadingActions.Contains(invoice.Id)">Issue</button>
                                 <button class="btn btn-sm btn-danger" @onclick="() => CancelInvoice(invoice.Id)" disabled="@loadingActions.Contains(invoice.Id)">Cancel</button>
                             }
                             @if (invoice.Status == InvoiceStatus.Issued)
                             {
+                                <a href="/invoices/@invoice.Id" class="btn btn-sm btn-outline-secondary me-1">View</a>
                                 <button class="btn btn-sm btn-success" @onclick="() => MarkPaid(invoice.Id)" disabled="@loadingActions.Contains(invoice.Id)">Mark Paid</button>
                                 <button class="btn btn-sm btn-warning" @onclick="() => MarkOverdue(invoice.Id)" disabled="@loadingActions.Contains(invoice.Id)">Mark Overdue</button>
                                 <button class="btn btn-sm btn-danger" @onclick="() => CancelInvoice(invoice.Id)" disabled="@loadingActions.Contains(invoice.Id)">Cancel</button>
                             }
                             @if (invoice.Status == InvoiceStatus.Overdue)
                             {
+                                <a href="/invoices/@invoice.Id" class="btn btn-sm btn-outline-secondary me-1">View</a>
                                 <button class="btn btn-sm btn-success" @onclick="() => MarkPaid(invoice.Id)" disabled="@loadingActions.Contains(invoice.Id)">Mark Paid</button>
                                 <button class="btn btn-sm btn-danger" @onclick="() => CancelInvoice(invoice.Id)" disabled="@loadingActions.Contains(invoice.Id)">Cancel</button>
+                            }
+                            @if (invoice.Status is InvoiceStatus.Paid or InvoiceStatus.Cancelled)
+                            {
+                                <a href="/invoices/@invoice.Id" class="btn btn-sm btn-outline-secondary">View</a>
                             }
                         </td>
                     </tr>

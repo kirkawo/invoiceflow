@@ -8,6 +8,30 @@ public class ApiIntegrationTests
 {
     private HttpClient CreateClient() => new ApiWebApplicationFactory().CreateClient();
 
+    private async Task<Guid> CreateDraftInvoiceAsync(HttpClient client)
+    {
+        var createResponse = await client.PostAsJsonAsync("/api/clients", new
+        {
+            name = "Alice",
+            email = "alice@example.com"
+        });
+        var createBody = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var clientId = createBody.GetProperty("id").GetGuid();
+
+        var issueDate = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
+        var dueDate = issueDate.AddDays(30);
+        var invoiceResponse = await client.PostAsJsonAsync("/api/invoices", new
+        {
+            clientId,
+            number = "INV-001",
+            issueDateUtc = issueDate,
+            dueDateUtc = dueDate,
+            currency = "USD"
+        });
+        var invoiceBody = await invoiceResponse.Content.ReadFromJsonAsync<JsonElement>();
+        return invoiceBody.GetProperty("id").GetGuid();
+    }
+
     [Fact]
     public async Task PostClient_Returns201_WithId()
     {
@@ -148,6 +172,114 @@ public class ApiIntegrationTests
 
         var invoices = await response.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal(2, invoices.GetArrayLength());
+    }
+
+    [Fact]
+    public async Task AddLineItem_ToDraftInvoice_Returns201()
+    {
+        using var client = CreateClient();
+        var invoiceId = await CreateDraftInvoiceAsync(client);
+
+        var response = await client.PostAsJsonAsync($"/api/invoices/{invoiceId}/line-items", new
+        {
+            description = "Consulting",
+            quantity = 10,
+            unitPrice = 100
+        });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(body.TryGetProperty("lineItemId", out var idProp));
+        Assert.NotEqual(0, idProp.GetInt32());
+
+        var getResponse = await client.GetAsync($"/api/invoices/{invoiceId}");
+        var invoice = await getResponse.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(1000, invoice.GetProperty("total").GetDecimal());
+        Assert.Single(invoice.GetProperty("lineItems").EnumerateArray());
+    }
+
+    [Fact]
+    public async Task AddLineItem_ToNonDraftInvoice_Returns400()
+    {
+        using var client = CreateClient();
+        var invoiceId = await CreateDraftInvoiceAsync(client);
+        await client.PostAsJsonAsync($"/api/invoices/{invoiceId}/line-items", new
+        {
+            description = "Service",
+            quantity = 1,
+            unitPrice = 500
+        });
+        await client.PostAsync($"/api/invoices/{invoiceId}/issue", null);
+
+        var response = await client.PostAsJsonAsync($"/api/invoices/{invoiceId}/line-items", new
+        {
+            description = "Extra",
+            quantity = 1,
+            unitPrice = 100
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateLineItem_UpdatesInvoiceTotal()
+    {
+        using var client = CreateClient();
+        var invoiceId = await CreateDraftInvoiceAsync(client);
+        var addResponse = await client.PostAsJsonAsync($"/api/invoices/{invoiceId}/line-items", new
+        {
+            description = "Consulting",
+            quantity = 10,
+            unitPrice = 100
+        });
+        var addBody = await addResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var lineItemId = addBody.GetProperty("lineItemId").GetInt32();
+
+        var response = await client.PutAsJsonAsync($"/api/invoices/{invoiceId}/line-items/{lineItemId}", new
+        {
+            description = "Premium Consulting",
+            quantity = 5,
+            unitPrice = 200
+        });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var getResponse = await client.GetAsync($"/api/invoices/{invoiceId}");
+        var invoice = await getResponse.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(1000, invoice.GetProperty("total").GetDecimal());
+        var items = invoice.GetProperty("lineItems").EnumerateArray().ToList();
+        Assert.Single(items);
+        Assert.Equal("Premium Consulting", items[0].GetProperty("description").GetString());
+    }
+
+    [Fact]
+    public async Task RemoveLineItem_RecalculatesTotal()
+    {
+        using var client = CreateClient();
+        var invoiceId = await CreateDraftInvoiceAsync(client);
+        await client.PostAsJsonAsync($"/api/invoices/{invoiceId}/line-items", new
+        {
+            description = "Item A",
+            quantity = 2,
+            unitPrice = 50
+        });
+        var addResponse = await client.PostAsJsonAsync($"/api/invoices/{invoiceId}/line-items", new
+        {
+            description = "Item B",
+            quantity = 3,
+            unitPrice = 30
+        });
+        var addBody = await addResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var lineItemId = addBody.GetProperty("lineItemId").GetInt32();
+
+        var response = await client.DeleteAsync($"/api/invoices/{invoiceId}/line-items/{lineItemId}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var getResponse = await client.GetAsync($"/api/invoices/{invoiceId}");
+        var invoice = await getResponse.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(100, invoice.GetProperty("total").GetDecimal());
+        Assert.Single(invoice.GetProperty("lineItems").EnumerateArray());
     }
 
     [Fact]
