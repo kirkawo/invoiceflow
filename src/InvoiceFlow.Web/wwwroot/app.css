@@ -167,3 +167,68 @@ h3 {
 .darker-border-checkbox.form-check-input {
     border-color: #929292;
 }
+
+/* Invoice cards for mobile */
+.invoice-card {
+    border: 1px solid #e8e8e8;
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    background: #fff;
+}
+
+.invoice-card .card-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.invoice-card .card-row:last-child {
+    margin-bottom: 0;
+}
+
+.invoice-card .card-label {
+    font-size: 0.78rem;
+    color: #888;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.invoice-card .card-value {
+    font-size: 0.9rem;
+    color: #333;
+    font-weight: 500;
+    text-align: right;
+}
+
+.invoice-card .card-value a {
+    font-weight: 600;
+}
+
+.invoice-card .card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #f0f0f0;
+}
+
+.invoice-card .card-actions .btn {
+    font-size: 0.78rem;
+    padding: 4px 10px;
+    border-radius: 6px;
+    white-space: nowrap;
+}
+
+@media (max-width: 575.98px) {
+    body {
+        overflow-x: hidden;
+    }
+
+    html {
+        overflow-x: hidden;
+    }
+}

@@ -16,7 +16,7 @@
 }
 
 <div class="row g-2 mb-3 align-items-end">
-    <div class="col-sm-4">
+    <div class="col-12 col-sm-4">
         <label for="clientFilter" class="form-label">Client</label>
         <select id="clientFilter" class="form-select" value="@selectedClientId" @onchange="OnClientFilterChanged">
             <option value="">All clients</option>
@@ -29,7 +29,7 @@
             }
         </select>
     </div>
-    <div class="col-sm-3">
+    <div class="col-6 col-sm-3">
         <label for="statusFilter" class="form-label">Status</label>
         <select id="statusFilter" class="form-select" value="@selectedStatus" @onchange="OnStatusFilterChanged">
             <option value="">All statuses</option>
@@ -39,55 +39,42 @@
             }
         </select>
     </div>
-    <div class="col-sm-3 d-flex align-items-end pb-1">
-        <button class="btn btn-outline-secondary" @onclick="ClearFilters">Clear</button>
+    <div class="col-6 col-sm-3 d-flex align-items-end pb-1">
+        <button class="btn btn-outline-secondary w-100" @onclick="ClearFilters">Clear</button>
     </div>
 </div>
 
-<div class="table-responsive">
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Number</th>
-                <th>Client</th>
-                <th>Status</th>
-                <th>Currency</th>
-                <th>Total</th>
-                <th>Due Date</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            @if (invoices is null)
-            {
+@if (invoices is null)
+{
+    <p class="text-muted">Loading...</p>
+}
+else if (invoices.Count == 0)
+{
+    <div class="alert alert-info">No invoices found.</div>
+}
+else
+{
+    @* Desktop table *@
+    <div class="d-none d-md-block">
+        <table class="table">
+            <thead>
                 <tr>
-                    <td colspan="7" class="text-center text-muted py-4">Loading...</td>
+                    <th>Number</th>
+                    <th>Client</th>
+                    <th>Status</th>
+                    <th>Currency</th>
+                    <th>Total</th>
+                    <th>Due Date</th>
+                    <th>Actions</th>
                 </tr>
-            }
-            else if (invoices.Count == 0)
-            {
-                <tr>
-                    <td colspan="7" class="text-center text-muted py-4">No invoices found.</td>
-                </tr>
-            }
-            else
-            {
+            </thead>
+            <tbody>
                 @foreach (var invoice in invoices)
                 {
                     <tr>
                         <td><a href="/invoices/@invoice.Id">@invoice.Number</a></td>
                         <td>@GetClientName(invoice.ClientId)</td>
-                        <td>
-                            <span class="badge @(invoice.Status switch
-                            {
-                                InvoiceStatus.Draft => "bg-secondary",
-                                InvoiceStatus.Issued => "bg-primary",
-                                InvoiceStatus.Paid => "bg-success",
-                                InvoiceStatus.Overdue => "bg-warning text-dark",
-                                InvoiceStatus.Cancelled => "bg-danger",
-                                _ => "bg-secondary"
-                            })">@invoice.Status</span>
-                        </td>
+                        <td><span class="badge @StatusClass(invoice.Status)">@invoice.Status</span></td>
                         <td>@invoice.Currency</td>
                         <td>@invoice.Total.ToString("F2")</td>
                         <td>@invoice.DueDateUtc.ToShortDateString()</td>
@@ -103,10 +90,49 @@
                         </td>
                     </tr>
                 }
-            }
-        </tbody>
-    </table>
-</div>
+            </tbody>
+        </table>
+    </div>
+
+    @* Mobile cards *@
+    <div class="d-md-none">
+        @foreach (var invoice in invoices)
+        {
+            <div class="invoice-card">
+                <div class="card-row">
+                    <span class="card-label">Number</span>
+                    <span class="card-value"><a href="/invoices/@invoice.Id">@invoice.Number</a></span>
+                </div>
+                <div class="card-row">
+                    <span class="card-label">Client</span>
+                    <span class="card-value">@GetClientName(invoice.ClientId)</span>
+                </div>
+                <div class="card-row">
+                    <span class="card-label">Status</span>
+                    <span class="card-value"><span class="badge @StatusClass(invoice.Status)">@invoice.Status</span></span>
+                </div>
+                <div class="card-row">
+                    <span class="card-label">Amount</span>
+                    <span class="card-value">@invoice.Currency @invoice.Total.ToString("F2")</span>
+                </div>
+                <div class="card-row">
+                    <span class="card-label">Due</span>
+                    <span class="card-value">@invoice.DueDateUtc.ToShortDateString()</span>
+                </div>
+                <div class="card-actions">
+                    @if (invoice.Status == InvoiceStatus.Draft)
+                    {
+                        <a href="/invoices/@invoice.Id" class="btn btn-outline-primary">Edit</a>
+                    }
+                    else
+                    {
+                        <a href="/invoices/@invoice.Id" class="btn btn-outline-secondary">View</a>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+}
 
 @code {
     private IReadOnlyList<InvoiceDto>? invoices;
@@ -175,4 +201,14 @@
         selectedStatus = "";
         await LoadInvoicesAsync();
     }
+
+    private static string StatusClass(InvoiceStatus status) => status switch
+    {
+        InvoiceStatus.Draft => "bg-secondary",
+        InvoiceStatus.Issued => "bg-primary",
+        InvoiceStatus.Paid => "bg-success",
+        InvoiceStatus.Overdue => "bg-warning text-dark",
+        InvoiceStatus.Cancelled => "bg-danger",
+        _ => "bg-secondary"
+    };
 }

@@ -108,7 +108,7 @@
     border-right: 1px solid #e8e8e8;
 }
 
-/* Drawer backdrop - hidden by default */
+/* Drawer backdrop - hidden by default on all screens */
 .drawer-backdrop {
     display: none;
 }
@@ -127,6 +127,10 @@
 
 /* Mobile / Tablet layout */
 @media (max-width: 991.98px) {
+    .app-shell {
+        overflow-x: hidden;
+    }
+
     .top-app-bar {
         height: 56px;
     }
@@ -159,10 +163,10 @@
 
     .side-drawer.drawer-open {
         left: 0;
-        box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+        box-shadow: 4px 0 16px rgba(0, 0, 0, 0.15);
     }
 
-    .drawer-backdrop {
+    .drawer-backdrop.visible {
         display: block;
         position: fixed;
         top: 0;
@@ -171,6 +175,7 @@
         bottom: 0;
         background-color: rgba(0, 0, 0, 0.3);
         z-index: 1500;
+        -webkit-tap-highlight-color: transparent;
     }
 
     .content {

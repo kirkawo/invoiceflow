@@ -5,7 +5,7 @@
     <Authorized>
         <div class="app-shell">
             <header class="top-app-bar">
-                <button class="menu-btn" aria-label="Toggle navigation menu" @onclick="ToggleDrawer">
+                <button class="menu-btn" aria-label="Toggle navigation menu" onclick="toggleDrawer()">
                     <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
                         <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" />
                     </svg>
@@ -24,14 +24,11 @@
             </header>
 
             <div class="body-wrapper">
-                <aside class="side-drawer @(_drawerOpen ? "drawer-open" : "")" aria-label="Navigation">
-                    <NavMenu OnNavigated="CloseDrawer" />
+                <aside id="side-drawer" class="side-drawer" aria-label="Navigation">
+                    <NavMenu />
                 </aside>
 
-                @if (_drawerOpen)
-                {
-                    <div class="drawer-backdrop" @onclick="CloseDrawer" @ontouchstart="CloseDrawer"></div>
-                }
+                <div id="drawer-backdrop" class="drawer-backdrop" onclick="closeDrawer()" ontouchstart="closeDrawer()"></div>
 
                 <main class="main-content">
                     <div class="content">
@@ -57,17 +54,3 @@
     <a href="" class="reload">Reload</a>
     <a class="dismiss">X</a>
 </div>
-
-@code {
-    private bool _drawerOpen;
-
-    private void ToggleDrawer()
-    {
-        _drawerOpen = !_drawerOpen;
-    }
-
-    private void CloseDrawer()
-    {
-        _drawerOpen = false;
-    }
-}
