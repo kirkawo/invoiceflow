@@ -2,6 +2,15 @@
     min-height: 100vh;
 }
 
+.auth-layout {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 16px;
+    box-sizing: border-box;
+}
+
 /* Top App Bar */
 .top-app-bar {
     position: fixed;
