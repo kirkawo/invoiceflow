@@ -12,6 +12,7 @@ public class ApiWebApplicationFactory : WebApplicationFactory<Program>
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        builder.UseEnvironment("Testing");
         builder.ConfigureServices(services =>
         {
             var clientRepo = services.SingleOrDefault(d => d.ServiceType == typeof(IClientRepository));

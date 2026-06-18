@@ -59,13 +59,17 @@ public class InvoiceServiceTests
     }
 
     [Fact]
-    public async Task CreateInvoiceDraftAsync_Throws_WhenNumberIsEmpty()
+    public async Task CreateInvoiceDraftAsync_AutoGeneratesNumber_WhenNumberIsEmpty()
     {
         var clientId = await CreateClientAsync();
         var issueDate = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
 
-        await Assert.ThrowsAsync<ArgumentException>(() =>
-            _service.CreateInvoiceDraftAsync(clientId, "", issueDate, issueDate.AddDays(30), "USD", null));
+        var id = await _service.CreateInvoiceDraftAsync(clientId, "", issueDate, issueDate.AddDays(30), "USD", null);
+
+        var stored = await _invoiceRepository.GetByIdAsync(id);
+        Assert.NotNull(stored);
+        Assert.Matches(@"^INV-\d{4}-0{3}\d$", stored.Number);
+        Assert.NotEmpty(stored.Number);
     }
 
     [Fact]
@@ -132,6 +136,167 @@ public class InvoiceServiceTests
 
         Assert.Empty(invoices);
     }
+
+    [Fact]
+    public async Task AddLineItemAsync_AddsLineItemAndReturnsId()
+    {
+        var clientId = await CreateClientAsync();
+        var invoiceId = await CreateDraftInvoiceAsync(clientId);
+
+        await _service.AddLineItemAsync(invoiceId, "Consulting", 10, 100);
+
+        var dto = await _service.GetInvoiceAsync(invoiceId);
+        Assert.NotNull(dto);
+        Assert.Single(dto.LineItems);
+        Assert.Equal(1000, dto.Total);
+    }
+
+    [Fact]
+    public async Task AddLineItemAsync_Throws_WhenInvoiceNotFound()
+    {
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            _service.AddLineItemAsync(Guid.NewGuid(), "Item", 1, 100));
+    }
+
+    [Fact]
+    public async Task UpdateLineItemAsync_UpdatesLineItem()
+    {
+        var clientId = await CreateClientAsync();
+        var invoiceId = await CreateDraftInvoiceAsync(clientId);
+        var lineItemId = await _service.AddLineItemAsync(invoiceId, "Consulting", 10, 100);
+
+        await _service.UpdateLineItemAsync(invoiceId, lineItemId, "Premium Consulting", 5, 200);
+
+        var dto = await _service.GetInvoiceAsync(invoiceId);
+        Assert.NotNull(dto);
+        Assert.Single(dto.LineItems);
+        Assert.Equal("Premium Consulting", dto.LineItems[0].Description);
+        Assert.Equal(1000, dto.Total);
+    }
+
+    [Fact]
+    public async Task RemoveLineItemAsync_RemovesLineItem()
+    {
+        var clientId = await CreateClientAsync();
+        var invoiceId = await CreateDraftInvoiceAsync(clientId);
+        await _service.AddLineItemAsync(invoiceId, "Item", 2, 50);
+
+        await _service.RemoveLineItemAsync(invoiceId, 0);
+
+        var dto = await _service.GetInvoiceAsync(invoiceId);
+        Assert.NotNull(dto);
+        Assert.Empty(dto.LineItems);
+        Assert.Equal(0, dto.Total);
+    }
+
+    [Fact]
+    public async Task GetAllInvoicesAsync_ReturnsAllInvoices()
+    {
+        var client1Id = await CreateClientAsync("Client A");
+        var client2Id = await CreateClientAsync("Client B");
+        var issueDate = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
+        await _service.CreateInvoiceDraftAsync(client1Id, "INV-001", issueDate, issueDate.AddDays(30), "USD", null);
+        await _service.CreateInvoiceDraftAsync(client2Id, "INV-002", issueDate, issueDate.AddDays(30), "USD", null);
+
+        var invoices = await _service.GetAllInvoicesAsync();
+
+        Assert.Equal(2, invoices.Count);
+    }
+
+    [Fact]
+    public async Task GetAllInvoicesAsync_FiltersByClient()
+    {
+        var client1Id = await CreateClientAsync("Client A");
+        var client2Id = await CreateClientAsync("Client B");
+        var issueDate = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
+        await _service.CreateInvoiceDraftAsync(client1Id, "INV-001", issueDate, issueDate.AddDays(30), "USD", null);
+        await _service.CreateInvoiceDraftAsync(client2Id, "INV-002", issueDate, issueDate.AddDays(30), "USD", null);
+
+        var invoices = await _service.GetAllInvoicesAsync(client1Id);
+
+        Assert.Single(invoices);
+        Assert.Equal("INV-001", invoices[0].Number);
+    }
+
+    [Fact]
+    public async Task GetAllInvoicesAsync_FiltersByStatus()
+    {
+        var clientId = await CreateClientAsync();
+        var issueDate = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
+        var invoiceId = await _service.CreateInvoiceDraftAsync(clientId, "INV-001", issueDate, issueDate.AddDays(30), "USD", null);
+        await _service.CreateInvoiceDraftAsync(clientId, "INV-002", issueDate, issueDate.AddDays(30), "EUR", null);
+        await _service.AddLineItemAsync(invoiceId, "Item", 1, 100);
+        await _service.IssueInvoiceAsync(invoiceId);
+
+        var invoices = await _service.GetAllInvoicesAsync(status: InvoiceStatus.Issued);
+
+        Assert.Single(invoices);
+        Assert.Equal("INV-001", invoices[0].Number);
+    }
+
+    [Fact]
+    public async Task GetAllInvoicesAsync_FiltersByClientAndStatus()
+    {
+        var client1Id = await CreateClientAsync("Client A");
+        var client2Id = await CreateClientAsync("Client B");
+        var issueDate = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
+        var inv1Id = await _service.CreateInvoiceDraftAsync(client1Id, "INV-001", issueDate, issueDate.AddDays(30), "USD", null);
+        await _service.CreateInvoiceDraftAsync(client2Id, "INV-002", issueDate, issueDate.AddDays(30), "USD", null);
+        await _service.AddLineItemAsync(inv1Id, "Item", 1, 100);
+        await _service.IssueInvoiceAsync(inv1Id);
+
+        var invoices = await _service.GetAllInvoicesAsync(client1Id, InvoiceStatus.Issued);
+
+        Assert.Single(invoices);
+        Assert.Equal("INV-001", invoices[0].Number);
+    }
+
+    [Fact]
+    public async Task CreateInvoiceDraftAsync_AutoGeneratesNumber_WhenNumberIsNull()
+    {
+        var clientId = await CreateClientAsync();
+        var issueDate = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
+        var dueDate = issueDate.AddDays(30);
+
+        var id = await _service.CreateInvoiceDraftAsync(clientId, null, issueDate, dueDate, "USD", null);
+
+        var stored = await _invoiceRepository.GetByIdAsync(id);
+        Assert.NotNull(stored);
+        Assert.Matches(@"^INV-\d{4}-0{3}\d$", stored.Number);
+        Assert.NotEmpty(stored.Number);
+        Assert.Equal(InvoiceStatus.Draft, stored.Status);
+    }
+
+    [Fact]
+    public async Task CreateInvoiceDraftAsync_AutoGeneratedNumbers_AreSequential()
+    {
+        var clientId = await CreateClientAsync();
+        var issueDate = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
+        var dueDate = issueDate.AddDays(30);
+
+        var id1 = await _service.CreateInvoiceDraftAsync(clientId, null, issueDate, dueDate, "USD", null);
+        var id2 = await _service.CreateInvoiceDraftAsync(clientId, null, issueDate, dueDate, "USD", null);
+
+        var inv1 = await _invoiceRepository.GetByIdAsync(id1);
+        var inv2 = await _invoiceRepository.GetByIdAsync(id2);
+        Assert.NotNull(inv1);
+        Assert.NotNull(inv2);
+        Assert.NotEqual(inv1.Number, inv2.Number);
+        Assert.Matches(@"^INV-\d{4}-0{3}\d$", inv1.Number);
+    }
+
+    [Fact]
+    public async Task GetAllInvoicesAsync_WhenNone_ReturnsEmptyList()
+    {
+        var invoices = await _service.GetAllInvoicesAsync();
+        Assert.Empty(invoices);
+    }
+
+    private async Task<Guid> CreateDraftInvoiceAsync(Guid clientId)
+    {
+        var issueDate = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
+        return await _service.CreateInvoiceDraftAsync(clientId, "INV-001", issueDate, issueDate.AddDays(30), "USD", null);
+    }
 }
 
 public class FakeInvoiceRepository : IInvoiceRepository
@@ -156,4 +321,20 @@ public class FakeInvoiceRepository : IInvoiceRepository
     public Task<IReadOnlyList<Invoice>> ListByClientAsync(Guid clientId, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<Invoice>>(
             _store.Values.Where(i => i.ClientId == clientId).ToList().AsReadOnly());
+
+    public Task<IReadOnlyList<Invoice>> ListAllAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<Invoice>>(
+            _store.Values.ToList().AsReadOnly());
+
+    public Task<string> GetNextInvoiceNumberAsync(CancellationToken cancellationToken = default)
+    {
+        var year = DateTime.UtcNow.Year;
+        var prefix = $"INV-{year}-";
+        var maxSeq = _store.Values
+            .Where(i => i.Number.StartsWith(prefix))
+            .Select(i => int.TryParse(i.Number[prefix.Length..], out var seq) ? seq : 0)
+            .DefaultIfEmpty(0)
+            .Max();
+        return Task.FromResult($"{prefix}{(maxSeq + 1):D4}");
+    }
 }

@@ -1,5 +1,6 @@
 using InvoiceFlow.Api.Endpoints.Contracts;
 using InvoiceFlow.Application.Invoices;
+using InvoiceFlow.Domain;
 
 namespace InvoiceFlow.Api.Endpoints;
 
@@ -31,6 +32,12 @@ public static class InvoiceEndpoints
             {
                 return Results.NotFound(new { error = ex.Message });
             }
+        });
+
+        group.MapGet("/", async (Guid? clientId, InvoiceStatus? status, InvoiceService invoiceService) =>
+        {
+            var invoices = await invoiceService.GetAllInvoicesAsync(clientId, status);
+            return Results.Ok(invoices);
         });
 
         group.MapGet("/{id:guid}", async (Guid id, InvoiceService invoiceService) =>
@@ -83,6 +90,53 @@ public static class InvoiceEndpoints
             try
             {
                 await invoiceService.CancelInvoiceAsync(id);
+                return Results.Ok();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        group.MapPost("/{id:guid}/line-items", async (Guid id, AddLineItemRequest request, InvoiceService invoiceService) =>
+        {
+            try
+            {
+                var lineItemId = await invoiceService.AddLineItemAsync(id, request.Description, request.Quantity, request.UnitPrice);
+                return Results.Created($"/api/invoices/{id}/line-items/{lineItemId}", new { lineItemId });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        group.MapPut("/{id:guid}/line-items/{lineItemId:int}", async (Guid id, int lineItemId, UpdateLineItemRequest request, InvoiceService invoiceService) =>
+        {
+            try
+            {
+                await invoiceService.UpdateLineItemAsync(id, lineItemId, request.Description, request.Quantity, request.UnitPrice);
+                return Results.Ok();
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        group.MapDelete("/{id:guid}/line-items/{lineItemId:int}", async (Guid id, int lineItemId, InvoiceService invoiceService) =>
+        {
+            try
+            {
+                await invoiceService.RemoveLineItemAsync(id, lineItemId);
                 return Results.Ok();
             }
             catch (InvalidOperationException ex)

@@ -6,4 +6,9 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="InvoiceFlow.UnitTests" />
+    <InternalsVisibleTo Include="InvoiceFlow.ApiTests" />
+  </ItemGroup>
+
 </Project>

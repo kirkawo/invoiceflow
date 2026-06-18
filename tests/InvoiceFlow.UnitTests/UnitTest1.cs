@@ -11,13 +11,10 @@ public class InvoiceTests
     private Invoice CreateInvoice(DateTime? dueDate = null) =>
         new(WorkspaceId, ClientId, "INV-001", IssueDate, dueDate ?? IssueDate.AddDays(30), "USD");
 
-    private static InvoiceLineItem Line(string desc, decimal qty, decimal price) =>
-        new(desc, qty, price);
-
     private Invoice CreateIssuedInvoice()
     {
         var invoice = CreateInvoice();
-        invoice.AddLineItem(Line("Service", 1, 500));
+        invoice.AddLineItem("Service", 1, 500);
         invoice.Issue();
         return invoice;
     }
@@ -26,8 +23,8 @@ public class InvoiceTests
     public void Total_EqualsSumOfLineItemAmounts()
     {
         var invoice = CreateInvoice();
-        invoice.AddLineItem(Line("Consulting", 10, 100));
-        invoice.AddLineItem(Line("Hosting", 1, 50));
+        invoice.AddLineItem("Consulting", 10, 100);
+        invoice.AddLineItem("Hosting", 1, 50);
 
         Assert.Equal(10 * 100 + 1 * 50, invoice.Total);
     }
@@ -36,7 +33,7 @@ public class InvoiceTests
     public void Subtotal_EqualsTotal_WhenNoTaxOrDiscount()
     {
         var invoice = CreateInvoice();
-        invoice.AddLineItem(Line("Design", 5, 200));
+        invoice.AddLineItem("Design", 5, 200);
 
         Assert.Equal(invoice.Total, invoice.Subtotal);
     }
@@ -61,7 +58,7 @@ public class InvoiceTests
     public void Issue_Throws_WhenAlreadyCancelled()
     {
         var invoice = CreateInvoice();
-        invoice.AddLineItem(Line("Work", 1, 300));
+        invoice.AddLineItem("Work", 1, 300);
         invoice.Cancel();
 
         Assert.Throws<InvalidOperationException>(() => invoice.Issue());
@@ -80,7 +77,7 @@ public class InvoiceTests
     public void Issue_Succeeds_WhenLineItemsExist()
     {
         var invoice = CreateInvoice();
-        invoice.AddLineItem(Line("Service", 1, 500));
+        invoice.AddLineItem("Service", 1, 500);
 
         invoice.Issue();
 
@@ -218,18 +215,98 @@ public class InvoiceTests
     {
         var invoice = CreateIssuedInvoice();
 
-        Assert.Throws<InvalidOperationException>(() => invoice.AddLineItem(Line("Extra", 1, 100)));
+        Assert.Throws<InvalidOperationException>(() => invoice.AddLineItem("Extra", 1, 100));
     }
 
     [Fact]
     public void RemoveLineItem_Throws_WhenNotDraft()
     {
         var invoice = CreateInvoice();
-        var item = Line("Extra", 1, 100);
-        invoice.AddLineItem(item);
+        invoice.AddLineItem("Extra", 1, 100);
+        var itemId = invoice.LineItems[0].Id;
         invoice.Issue();
 
-        Assert.Throws<InvalidOperationException>(() => invoice.RemoveLineItem(item));
+        Assert.Throws<InvalidOperationException>(() => invoice.RemoveLineItem(itemId));
+    }
+
+    [Fact]
+    public void RemoveLineItem_RemovesFromList_WhenDraft()
+    {
+        var invoice = CreateInvoice();
+        invoice.AddLineItem("Item A", 1, 100);
+        invoice.AddLineItem("Item B", 2, 50);
+        var firstId = invoice.LineItems[0].Id;
+
+        var removed = invoice.RemoveLineItem(firstId);
+
+        Assert.True(removed);
+        Assert.Single(invoice.LineItems);
+        Assert.Equal("Item B", invoice.LineItems[0].Description);
+    }
+
+    [Fact]
+    public void AddLineItem_UpdatesTotal()
+    {
+        var invoice = CreateInvoice();
+        invoice.AddLineItem("Item", 2, 50);
+
+        Assert.Equal(100, invoice.Total);
+    }
+
+    [Fact]
+    public void RemoveLineItem_UpdatesTotal()
+    {
+        var invoice = CreateInvoice();
+        invoice.AddLineItem("Item", 2, 50);
+
+        invoice.RemoveLineItem(invoice.LineItems[0].Id);
+
+        Assert.Equal(0, invoice.Total);
+        Assert.Empty(invoice.LineItems);
+    }
+
+    [Fact]
+    public void UpdateLineItem_UpdatesTotal()
+    {
+        var invoice = CreateInvoice();
+        invoice.AddLineItem("Item", 2, 50);
+        var itemId = invoice.LineItems[0].Id;
+
+        invoice.UpdateLineItem(itemId, "Updated Item", 3, 100);
+
+        Assert.Equal(300, invoice.Total);
+        Assert.Equal("Updated Item", invoice.LineItems[0].Description);
+    }
+
+    [Fact]
+    public void UpdateLineItem_Throws_WhenNotDraft()
+    {
+        var invoice = CreateInvoice();
+        invoice.AddLineItem("Item", 1, 100);
+        var itemId = invoice.LineItems[0].Id;
+        invoice.Issue();
+
+        Assert.Throws<InvalidOperationException>(() =>
+            invoice.UpdateLineItem(itemId, "Changed", 2, 200));
+    }
+
+    [Fact]
+    public void UpdateLineItem_Throws_WhenLineItemNotFound()
+    {
+        var invoice = CreateInvoice();
+
+        Assert.Throws<InvalidOperationException>(() =>
+            invoice.UpdateLineItem(999, "Ghost", 1, 100));
+    }
+
+    [Fact]
+    public void RemoveLineItem_Throws_WhenLineItemNotFound()
+    {
+        var invoice = CreateInvoice();
+
+        var removed = invoice.RemoveLineItem(999);
+
+        Assert.False(removed);
     }
 
     [Fact]
@@ -245,7 +322,7 @@ public class InvoiceTests
     public void UpdateDraft_Succeeds_WhenDraft()
     {
         var invoice = CreateInvoice();
-        invoice.AddLineItem(Line("Item", 1, 100));
+        invoice.AddLineItem("Item", 1, 100);
 
         invoice.UpdateDraft(ClientId, "INV-002", IssueDate, IssueDate.AddDays(60), "EUR");
 

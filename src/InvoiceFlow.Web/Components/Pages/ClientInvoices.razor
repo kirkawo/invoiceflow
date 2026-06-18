@@ -22,7 +22,7 @@ else
 {
     <p class="lead mb-3">Client: <strong>@clientName</strong></p>
 
-    <a href="/invoices/new" class="btn btn-primary mb-3">Create Invoice</a>
+    <a href="/invoices/new/@ClientId" class="btn btn-primary mb-3">Create Invoice</a>
 
     @if (invoices is null)
     {
@@ -34,58 +34,60 @@ else
     }
     else
     {
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Number</th>
-                    <th>Status</th>
-                    <th>Currency</th>
-                    <th>Total</th>
-                    <th>Due Date</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var invoice in invoices)
-                {
+        @* Desktop table *@
+        <div class="d-none d-md-block">
+            <table class="table">
+                <thead>
                     <tr>
-                        <td>@invoice.Number</td>
-                        <td>
-                            <span class="badge @(invoice.Status switch
-                            {
-                                InvoiceStatus.Draft => "bg-secondary",
-                                InvoiceStatus.Issued => "bg-primary",
-                                InvoiceStatus.Paid => "bg-success",
-                                InvoiceStatus.Overdue => "bg-warning text-dark",
-                                InvoiceStatus.Cancelled => "bg-danger",
-                                _ => "bg-secondary"
-                            })">@invoice.Status</span>
-                        </td>
-                        <td>@invoice.Currency</td>
-                        <td>@invoice.Total.ToString("F2")</td>
-                        <td>@invoice.DueDateUtc.ToShortDateString()</td>
-                        <td>
-                            @if (invoice.Status == InvoiceStatus.Draft)
-                            {
-                                <button class="btn btn-sm btn-primary" @onclick="() => IssueInvoice(invoice.Id)" disabled="@loadingActions.Contains(invoice.Id)">Issue</button>
-                                <button class="btn btn-sm btn-danger" @onclick="() => CancelInvoice(invoice.Id)" disabled="@loadingActions.Contains(invoice.Id)">Cancel</button>
-                            }
-                            @if (invoice.Status == InvoiceStatus.Issued)
-                            {
-                                <button class="btn btn-sm btn-success" @onclick="() => MarkPaid(invoice.Id)" disabled="@loadingActions.Contains(invoice.Id)">Mark Paid</button>
-                                <button class="btn btn-sm btn-warning" @onclick="() => MarkOverdue(invoice.Id)" disabled="@loadingActions.Contains(invoice.Id)">Mark Overdue</button>
-                                <button class="btn btn-sm btn-danger" @onclick="() => CancelInvoice(invoice.Id)" disabled="@loadingActions.Contains(invoice.Id)">Cancel</button>
-                            }
-                            @if (invoice.Status == InvoiceStatus.Overdue)
-                            {
-                                <button class="btn btn-sm btn-success" @onclick="() => MarkPaid(invoice.Id)" disabled="@loadingActions.Contains(invoice.Id)">Mark Paid</button>
-                                <button class="btn btn-sm btn-danger" @onclick="() => CancelInvoice(invoice.Id)" disabled="@loadingActions.Contains(invoice.Id)">Cancel</button>
-                            }
-                        </td>
+                        <th>Number</th>
+                        <th>Status</th>
+                        <th>Currency</th>
+                        <th>Total</th>
+                        <th>Due Date</th>
+                        <th>Actions</th>
                     </tr>
-                }
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @foreach (var invoice in invoices)
+                    {
+                        <tr>
+                            <td><a href="/invoices/@invoice.Id">@invoice.Number</a></td>
+                            <td><span class="badge @StatusClass(invoice.Status)">@invoice.Status</span></td>
+                            <td>@invoice.Currency</td>
+                            <td>@invoice.Total.ToString("F2")</td>
+                            <td>@invoice.DueDateUtc.ToShortDateString()</td>
+                            <td>@RenderActions(invoice)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @* Mobile cards *@
+        <div class="d-md-none">
+            @foreach (var invoice in invoices)
+            {
+                <div class="invoice-card">
+                    <div class="card-row">
+                        <span class="card-label">Number</span>
+                        <span class="card-value"><a href="/invoices/@invoice.Id">@invoice.Number</a></span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">Status</span>
+                        <span class="card-value"><span class="badge @StatusClass(invoice.Status)">@invoice.Status</span></span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">Amount</span>
+                        <span class="card-value">@invoice.Currency @invoice.Total.ToString("F2")</span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">Due</span>
+                        <span class="card-value">@invoice.DueDateUtc.ToShortDateString()</span>
+                    </div>
+                    <div class="card-actions">@RenderActions(invoice)</div>
+                </div>
+            }
+        </div>
     }
 }
 
@@ -154,4 +156,101 @@ else
 
     private Task CancelInvoice(Guid id) =>
         ExecuteAction(id, () => InvoiceService.CancelInvoiceAsync(id));
+
+    private static string StatusClass(InvoiceStatus status) => status switch
+    {
+        InvoiceStatus.Draft => "bg-secondary",
+        InvoiceStatus.Issued => "bg-primary",
+        InvoiceStatus.Paid => "bg-success",
+        InvoiceStatus.Overdue => "bg-warning text-dark",
+        InvoiceStatus.Cancelled => "bg-danger",
+        _ => "bg-secondary"
+    };
+
+    private RenderFragment RenderActions(InvoiceDto invoice) => builder =>
+    {
+        var disabled = loadingActions.Contains(invoice.Id);
+
+        if (invoice.Status == InvoiceStatus.Draft)
+        {
+            builder.OpenElement(0, "a");
+            builder.AddAttribute(1, "href", $"/invoices/{invoice.Id}");
+            builder.AddAttribute(2, "class", "btn btn-sm btn-outline-primary");
+            builder.AddContent(3, "Edit");
+            builder.CloseElement();
+
+            builder.OpenElement(4, "button");
+            builder.AddAttribute(5, "class", "btn btn-sm btn-primary");
+            builder.AddAttribute(6, "disabled", disabled);
+            builder.AddAttribute(7, "onclick", EventCallback.Factory.Create(this, () => IssueInvoice(invoice.Id)));
+            builder.AddContent(8, "Issue");
+            builder.CloseElement();
+
+            builder.OpenElement(9, "button");
+            builder.AddAttribute(10, "class", "btn btn-sm btn-danger");
+            builder.AddAttribute(11, "disabled", disabled);
+            builder.AddAttribute(12, "onclick", EventCallback.Factory.Create(this, () => CancelInvoice(invoice.Id)));
+            builder.AddContent(13, "Cancel");
+            builder.CloseElement();
+        }
+        else if (invoice.Status == InvoiceStatus.Issued)
+        {
+            builder.OpenElement(0, "a");
+            builder.AddAttribute(1, "href", $"/invoices/{invoice.Id}");
+            builder.AddAttribute(2, "class", "btn btn-sm btn-outline-secondary");
+            builder.AddContent(3, "View");
+            builder.CloseElement();
+
+            builder.OpenElement(4, "button");
+            builder.AddAttribute(5, "class", "btn btn-sm btn-success");
+            builder.AddAttribute(6, "disabled", disabled);
+            builder.AddAttribute(7, "onclick", EventCallback.Factory.Create(this, () => MarkPaid(invoice.Id)));
+            builder.AddContent(8, "Paid");
+            builder.CloseElement();
+
+            builder.OpenElement(9, "button");
+            builder.AddAttribute(10, "class", "btn btn-sm btn-warning");
+            builder.AddAttribute(11, "disabled", disabled);
+            builder.AddAttribute(12, "onclick", EventCallback.Factory.Create(this, () => MarkOverdue(invoice.Id)));
+            builder.AddContent(13, "Overdue");
+            builder.CloseElement();
+
+            builder.OpenElement(14, "button");
+            builder.AddAttribute(15, "class", "btn btn-sm btn-danger");
+            builder.AddAttribute(16, "disabled", disabled);
+            builder.AddAttribute(17, "onclick", EventCallback.Factory.Create(this, () => CancelInvoice(invoice.Id)));
+            builder.AddContent(18, "Cancel");
+            builder.CloseElement();
+        }
+        else if (invoice.Status == InvoiceStatus.Overdue)
+        {
+            builder.OpenElement(0, "a");
+            builder.AddAttribute(1, "href", $"/invoices/{invoice.Id}");
+            builder.AddAttribute(2, "class", "btn btn-sm btn-outline-secondary");
+            builder.AddContent(3, "View");
+            builder.CloseElement();
+
+            builder.OpenElement(4, "button");
+            builder.AddAttribute(5, "class", "btn btn-sm btn-success");
+            builder.AddAttribute(6, "disabled", disabled);
+            builder.AddAttribute(7, "onclick", EventCallback.Factory.Create(this, () => MarkPaid(invoice.Id)));
+            builder.AddContent(8, "Paid");
+            builder.CloseElement();
+
+            builder.OpenElement(9, "button");
+            builder.AddAttribute(10, "class", "btn btn-sm btn-danger");
+            builder.AddAttribute(11, "disabled", disabled);
+            builder.AddAttribute(12, "onclick", EventCallback.Factory.Create(this, () => CancelInvoice(invoice.Id)));
+            builder.AddContent(13, "Cancel");
+            builder.CloseElement();
+        }
+        else if (invoice.Status is InvoiceStatus.Paid or InvoiceStatus.Cancelled)
+        {
+            builder.OpenElement(0, "a");
+            builder.AddAttribute(1, "href", $"/invoices/{invoice.Id}");
+            builder.AddAttribute(2, "class", "btn btn-sm btn-outline-secondary");
+            builder.AddContent(3, "View");
+            builder.CloseElement();
+        }
+    };
 }

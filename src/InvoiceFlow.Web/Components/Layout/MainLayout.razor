@@ -3,21 +3,39 @@
 
 <AuthorizeView>
     <Authorized>
-        <div class="page">
-            <div class="sidebar">
-                <NavMenu />
-            </div>
-            <main>
-                <div class="top-row px-4">
-                    <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-                    <form method="post" action="/auth/logout" class="ms-auto">
-                        <button type="submit" class="btn btn-outline-secondary btn-sm">Logout</button>
+        <div class="app-shell">
+            <header class="top-app-bar">
+                <button class="menu-btn" aria-label="Toggle navigation menu" onclick="toggleDrawer()">
+                    <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+                        <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" />
+                    </svg>
+                </button>
+                <span class="app-title">InvoiceFlow</span>
+                <div class="top-bar-actions">
+                    <form method="post" action="/auth/logout">
+                        <button type="submit" class="btn-logout" aria-label="Log out">
+                            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                                <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z" />
+                            </svg>
+                            <span class="logout-label">Logout</span>
+                        </button>
                     </form>
                 </div>
-                <article class="content px-4">
-                    @Body
-                </article>
-            </main>
+            </header>
+
+            <div class="body-wrapper">
+                <aside id="side-drawer" class="side-drawer" aria-label="Navigation">
+                    <NavMenu />
+                </aside>
+
+                <div id="drawer-backdrop" class="drawer-backdrop" onclick="closeDrawer()" ontouchstart="closeDrawer()"></div>
+
+                <main class="main-content">
+                    <div class="content">
+                        @Body
+                    </div>
+                </main>
+            </div>
         </div>
     </Authorized>
     <NotAuthorized>
@@ -34,5 +52,5 @@
 <div id="blazor-error-ui">
     An unhandled error has occurred.
     <a href="" class="reload">Reload</a>
-    <a class="dismiss">🗙</a>
+    <a class="dismiss">X</a>
 </div>

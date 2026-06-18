@@ -48,18 +48,26 @@ public class Invoice
         Notes = notes;
     }
 
-    public void AddLineItem(InvoiceLineItem item)
+    public void AddLineItem(string description, decimal quantity, decimal unitPrice)
     {
         EnsureDraft();
-        ArgumentNullException.ThrowIfNull(item);
+        var item = new InvoiceLineItem(description, quantity, unitPrice);
         _lineItems.Add(item);
     }
 
-    public bool RemoveLineItem(InvoiceLineItem item)
+    public void UpdateLineItem(int lineItemId, string description, decimal quantity, decimal unitPrice)
     {
         EnsureDraft();
-        ArgumentNullException.ThrowIfNull(item);
-        return _lineItems.Remove(item);
+        var item = _lineItems.FirstOrDefault(li => li.Id == lineItemId)
+            ?? throw new InvalidOperationException($"Line item with ID '{lineItemId}' not found.");
+        item.Update(description, quantity, unitPrice);
+    }
+
+    public bool RemoveLineItem(int lineItemId)
+    {
+        EnsureDraft();
+        var item = _lineItems.FirstOrDefault(li => li.Id == lineItemId);
+        return item is not null && _lineItems.Remove(item);
     }
 
     public void UpdateDraft(

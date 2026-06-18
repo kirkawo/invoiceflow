@@ -43,4 +43,30 @@ public class EfInvoiceRepository : IInvoiceRepository
             .AsNoTracking()
             .ToListAsync(cancellationToken);
     }
+
+    public async Task<IReadOnlyList<Invoice>> ListAllAsync(CancellationToken cancellationToken = default)
+    {
+        var workspaceId = _workspaceService.WorkspaceId;
+        return await _context.Invoices
+            .Where(i => i.WorkspaceId == workspaceId)
+            .Include(i => i.LineItems)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<string> GetNextInvoiceNumberAsync(CancellationToken cancellationToken = default)
+    {
+        var year = DateTime.UtcNow.Year;
+        var workspaceId = _workspaceService.WorkspaceId;
+        var prefix = $"INV-{year}-";
+        var numbers = await _context.Invoices
+            .Where(i => i.WorkspaceId == workspaceId && i.Number.StartsWith(prefix))
+            .Select(i => i.Number)
+            .ToListAsync(cancellationToken);
+        var maxSeq = numbers
+            .Select(n => n.Length > prefix.Length && int.TryParse(n[prefix.Length..], out var seq) ? seq : 0)
+            .DefaultIfEmpty(0)
+            .Max();
+        return $"{prefix}{(maxSeq + 1):D4}";
+    }
 }

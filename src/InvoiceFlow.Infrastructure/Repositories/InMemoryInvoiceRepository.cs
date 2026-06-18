@@ -26,4 +26,20 @@ public class InMemoryInvoiceRepository : IInvoiceRepository
     public Task<IReadOnlyList<Invoice>> ListByClientAsync(Guid clientId, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<Invoice>>(
             _store.Values.Where(i => i.ClientId == clientId).ToList().AsReadOnly());
+
+    public Task<IReadOnlyList<Invoice>> ListAllAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<Invoice>>(
+            _store.Values.ToList().AsReadOnly());
+
+    public Task<string> GetNextInvoiceNumberAsync(CancellationToken cancellationToken = default)
+    {
+        var year = DateTime.UtcNow.Year;
+        var prefix = $"INV-{year}-";
+        var maxSeq = _store.Values
+            .Where(i => i.Number.StartsWith(prefix))
+            .Select(i => int.TryParse(i.Number[prefix.Length..], out var seq) ? seq : 0)
+            .DefaultIfEmpty(0)
+            .Max();
+        return Task.FromResult($"{prefix}{(maxSeq + 1):D4}");
+    }
 }

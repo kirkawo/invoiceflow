@@ -18,7 +18,7 @@ public class InvoiceService
 
     public async Task<Guid> CreateInvoiceDraftAsync(
         Guid clientId,
-        string number,
+        string? number,
         DateTime issueDateUtc,
         DateTime dueDateUtc,
         string currency,
@@ -28,7 +28,9 @@ public class InvoiceService
         if (clientId == Guid.Empty)
             throw new ArgumentException("Client ID cannot be empty.", nameof(clientId));
 
-        ArgumentException.ThrowIfNullOrWhiteSpace(number);
+        if (string.IsNullOrWhiteSpace(number))
+            number = await _invoiceRepository.GetNextInvoiceNumberAsync(cancellationToken);
+
         ArgumentException.ThrowIfNullOrWhiteSpace(currency);
 
         var clientExists = await _clientRepository.GetByIdAsync(clientId, cancellationToken);
@@ -44,6 +46,22 @@ public class InvoiceService
     {
         var invoice = await _invoiceRepository.GetByIdAsync(id, cancellationToken);
         return invoice is not null ? MapToDto(invoice) : null;
+    }
+
+    public async Task<IReadOnlyList<InvoiceDto>> GetAllInvoicesAsync(
+        Guid? clientId = null,
+        InvoiceStatus? status = null,
+        CancellationToken cancellationToken = default)
+    {
+        var invoices = await _invoiceRepository.ListAllAsync(cancellationToken);
+
+        if (clientId.HasValue)
+            invoices = invoices.Where(i => i.ClientId == clientId.Value).ToList();
+
+        if (status.HasValue)
+            invoices = invoices.Where(i => i.Status == status.Value).ToList();
+
+        return invoices.Select(MapToDto).ToList().AsReadOnly();
     }
 
     public async Task<IReadOnlyList<InvoiceDto>> GetClientInvoicesAsync(
@@ -94,6 +112,58 @@ public class InvoiceService
         await _invoiceRepository.UpdateAsync(invoice, cancellationToken);
     }
 
+    public async Task<int> AddLineItemAsync(
+        Guid invoiceId,
+        string description,
+        decimal quantity,
+        decimal unitPrice,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(description);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(quantity);
+        ArgumentOutOfRangeException.ThrowIfNegative(unitPrice);
+
+        var invoice = await _invoiceRepository.GetByIdAsync(invoiceId, cancellationToken)
+            ?? throw new InvalidOperationException($"Invoice with ID '{invoiceId}' not found.");
+
+        invoice.AddLineItem(description, quantity, unitPrice);
+        await _invoiceRepository.UpdateAsync(invoice, cancellationToken);
+
+        var added = invoice.LineItems.Last();
+        return added.Id;
+    }
+
+    public async Task UpdateLineItemAsync(
+        Guid invoiceId,
+        int lineItemId,
+        string description,
+        decimal quantity,
+        decimal unitPrice,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(description);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(quantity);
+        ArgumentOutOfRangeException.ThrowIfNegative(unitPrice);
+
+        var invoice = await _invoiceRepository.GetByIdAsync(invoiceId, cancellationToken)
+            ?? throw new InvalidOperationException($"Invoice with ID '{invoiceId}' not found.");
+
+        invoice.UpdateLineItem(lineItemId, description, quantity, unitPrice);
+        await _invoiceRepository.UpdateAsync(invoice, cancellationToken);
+    }
+
+    public async Task RemoveLineItemAsync(
+        Guid invoiceId,
+        int lineItemId,
+        CancellationToken cancellationToken = default)
+    {
+        var invoice = await _invoiceRepository.GetByIdAsync(invoiceId, cancellationToken)
+            ?? throw new InvalidOperationException($"Invoice with ID '{invoiceId}' not found.");
+
+        invoice.RemoveLineItem(lineItemId);
+        await _invoiceRepository.UpdateAsync(invoice, cancellationToken);
+    }
+
     private static InvoiceDto MapToDto(Invoice invoice) =>
         new()
         {
@@ -108,6 +178,17 @@ public class InvoiceService
             Notes = invoice.Notes,
             IssuedAtUtc = invoice.IssuedAtUtc,
             PaidAtUtc = invoice.PaidAtUtc,
-            CancelledAtUtc = invoice.CancelledAtUtc
+            CancelledAtUtc = invoice.CancelledAtUtc,
+            LineItems = invoice.LineItems
+                .Select(li => new InvoiceLineItemDto
+                {
+                    Id = li.Id,
+                    Description = li.Description,
+                    Quantity = li.Quantity,
+                    UnitPrice = li.UnitPrice,
+                    Amount = li.Amount
+                })
+                .ToList()
+                .AsReadOnly()
         };
 }
