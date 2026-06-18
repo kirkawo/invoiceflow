@@ -8,4 +8,5 @@ public interface IInvoiceRepository
     Task AddAsync(Invoice invoice, CancellationToken cancellationToken = default);
     Task UpdateAsync(Invoice invoice, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Invoice>> ListByClientAsync(Guid clientId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<Invoice>> ListAllAsync(CancellationToken cancellationToken = default);
 }

@@ -185,6 +185,75 @@ public class InvoiceServiceTests
         Assert.Equal(0, dto.Total);
     }
 
+    [Fact]
+    public async Task GetAllInvoicesAsync_ReturnsAllInvoices()
+    {
+        var client1Id = await CreateClientAsync("Client A");
+        var client2Id = await CreateClientAsync("Client B");
+        var issueDate = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
+        await _service.CreateInvoiceDraftAsync(client1Id, "INV-001", issueDate, issueDate.AddDays(30), "USD", null);
+        await _service.CreateInvoiceDraftAsync(client2Id, "INV-002", issueDate, issueDate.AddDays(30), "USD", null);
+
+        var invoices = await _service.GetAllInvoicesAsync();
+
+        Assert.Equal(2, invoices.Count);
+    }
+
+    [Fact]
+    public async Task GetAllInvoicesAsync_FiltersByClient()
+    {
+        var client1Id = await CreateClientAsync("Client A");
+        var client2Id = await CreateClientAsync("Client B");
+        var issueDate = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
+        await _service.CreateInvoiceDraftAsync(client1Id, "INV-001", issueDate, issueDate.AddDays(30), "USD", null);
+        await _service.CreateInvoiceDraftAsync(client2Id, "INV-002", issueDate, issueDate.AddDays(30), "USD", null);
+
+        var invoices = await _service.GetAllInvoicesAsync(client1Id);
+
+        Assert.Single(invoices);
+        Assert.Equal("INV-001", invoices[0].Number);
+    }
+
+    [Fact]
+    public async Task GetAllInvoicesAsync_FiltersByStatus()
+    {
+        var clientId = await CreateClientAsync();
+        var issueDate = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
+        var invoiceId = await _service.CreateInvoiceDraftAsync(clientId, "INV-001", issueDate, issueDate.AddDays(30), "USD", null);
+        await _service.CreateInvoiceDraftAsync(clientId, "INV-002", issueDate, issueDate.AddDays(30), "EUR", null);
+        await _service.AddLineItemAsync(invoiceId, "Item", 1, 100);
+        await _service.IssueInvoiceAsync(invoiceId);
+
+        var invoices = await _service.GetAllInvoicesAsync(status: InvoiceStatus.Issued);
+
+        Assert.Single(invoices);
+        Assert.Equal("INV-001", invoices[0].Number);
+    }
+
+    [Fact]
+    public async Task GetAllInvoicesAsync_FiltersByClientAndStatus()
+    {
+        var client1Id = await CreateClientAsync("Client A");
+        var client2Id = await CreateClientAsync("Client B");
+        var issueDate = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
+        var inv1Id = await _service.CreateInvoiceDraftAsync(client1Id, "INV-001", issueDate, issueDate.AddDays(30), "USD", null);
+        await _service.CreateInvoiceDraftAsync(client2Id, "INV-002", issueDate, issueDate.AddDays(30), "USD", null);
+        await _service.AddLineItemAsync(inv1Id, "Item", 1, 100);
+        await _service.IssueInvoiceAsync(inv1Id);
+
+        var invoices = await _service.GetAllInvoicesAsync(client1Id, InvoiceStatus.Issued);
+
+        Assert.Single(invoices);
+        Assert.Equal("INV-001", invoices[0].Number);
+    }
+
+    [Fact]
+    public async Task GetAllInvoicesAsync_WhenNone_ReturnsEmptyList()
+    {
+        var invoices = await _service.GetAllInvoicesAsync();
+        Assert.Empty(invoices);
+    }
+
     private async Task<Guid> CreateDraftInvoiceAsync(Guid clientId)
     {
         var issueDate = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -214,4 +283,8 @@ public class FakeInvoiceRepository : IInvoiceRepository
     public Task<IReadOnlyList<Invoice>> ListByClientAsync(Guid clientId, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<Invoice>>(
             _store.Values.Where(i => i.ClientId == clientId).ToList().AsReadOnly());
+
+    public Task<IReadOnlyList<Invoice>> ListAllAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<Invoice>>(
+            _store.Values.ToList().AsReadOnly());
 }

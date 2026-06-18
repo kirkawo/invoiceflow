@@ -26,4 +26,8 @@ public class InMemoryInvoiceRepository : IInvoiceRepository
     public Task<IReadOnlyList<Invoice>> ListByClientAsync(Guid clientId, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<Invoice>>(
             _store.Values.Where(i => i.ClientId == clientId).ToList().AsReadOnly());
+
+    public Task<IReadOnlyList<Invoice>> ListAllAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<Invoice>>(
+            _store.Values.ToList().AsReadOnly());
 }

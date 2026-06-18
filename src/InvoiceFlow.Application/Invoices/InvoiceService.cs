@@ -46,6 +46,22 @@ public class InvoiceService
         return invoice is not null ? MapToDto(invoice) : null;
     }
 
+    public async Task<IReadOnlyList<InvoiceDto>> GetAllInvoicesAsync(
+        Guid? clientId = null,
+        InvoiceStatus? status = null,
+        CancellationToken cancellationToken = default)
+    {
+        var invoices = await _invoiceRepository.ListAllAsync(cancellationToken);
+
+        if (clientId.HasValue)
+            invoices = invoices.Where(i => i.ClientId == clientId.Value).ToList();
+
+        if (status.HasValue)
+            invoices = invoices.Where(i => i.Status == status.Value).ToList();
+
+        return invoices.Select(MapToDto).ToList().AsReadOnly();
+    }
+
     public async Task<IReadOnlyList<InvoiceDto>> GetClientInvoicesAsync(
         Guid clientId,
         CancellationToken cancellationToken = default)

@@ -43,4 +43,14 @@ public class EfInvoiceRepository : IInvoiceRepository
             .AsNoTracking()
             .ToListAsync(cancellationToken);
     }
+
+    public async Task<IReadOnlyList<Invoice>> ListAllAsync(CancellationToken cancellationToken = default)
+    {
+        var workspaceId = _workspaceService.WorkspaceId;
+        return await _context.Invoices
+            .Where(i => i.WorkspaceId == workspaceId)
+            .Include(i => i.LineItems)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+    }
 }

@@ -1,0 +1,166 @@
+@page "/invoices"
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+@inject InvoiceService InvoiceService
+@inject ClientService ClientService
+@inject NavigationManager Navigation
+
+<PageTitle>Invoices - InvoiceFlow</PageTitle>
+
+<h1>Invoices</h1>
+
+@if (error is not null)
+{
+    <div class="alert alert-danger">@error</div>
+}
+
+<div class="row g-2 mb-3 align-items-end">
+    <div class="col-sm-4">
+        <label for="clientFilter" class="form-label">Client</label>
+        <select id="clientFilter" class="form-select" @bind="selectedClientId">
+            <option value="">All clients</option>
+            @if (clients is not null)
+            {
+                @foreach (var c in clients)
+                {
+                    <option value="@c.Id">@c.Name</option>
+                }
+            }
+        </select>
+    </div>
+    <div class="col-sm-3">
+        <label for="statusFilter" class="form-label">Status</label>
+        <select id="statusFilter" class="form-select" @bind="selectedStatus">
+            <option value="">All statuses</option>
+            @foreach (var s in Enum.GetValues<InvoiceStatus>())
+            {
+                <option value="@s">@s</option>
+            }
+        </select>
+    </div>
+    <div class="col-sm-3 d-flex align-items-end pb-1">
+        <button class="btn btn-outline-secondary" @onclick="ClearFilters">Clear</button>
+    </div>
+</div>
+
+<div class="table-responsive">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Number</th>
+                <th>Client</th>
+                <th>Status</th>
+                <th>Currency</th>
+                <th>Total</th>
+                <th>Due Date</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (invoices is null)
+            {
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">Loading...</td>
+                </tr>
+            }
+            else if (invoices.Count == 0)
+            {
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">No invoices found.</td>
+                </tr>
+            }
+            else
+            {
+                @foreach (var invoice in invoices)
+                {
+                    <tr>
+                        <td><a href="/invoices/@invoice.Id">@invoice.Number</a></td>
+                        <td>@GetClientName(invoice.ClientId)</td>
+                        <td>
+                            <span class="badge @(invoice.Status switch
+                            {
+                                InvoiceStatus.Draft => "bg-secondary",
+                                InvoiceStatus.Issued => "bg-primary",
+                                InvoiceStatus.Paid => "bg-success",
+                                InvoiceStatus.Overdue => "bg-warning text-dark",
+                                InvoiceStatus.Cancelled => "bg-danger",
+                                _ => "bg-secondary"
+                            })">@invoice.Status</span>
+                        </td>
+                        <td>@invoice.Currency</td>
+                        <td>@invoice.Total.ToString("F2")</td>
+                        <td>@invoice.DueDateUtc.ToShortDateString()</td>
+                        <td>
+                            @if (invoice.Status == InvoiceStatus.Draft)
+                            {
+                                <a href="/invoices/@invoice.Id" class="btn btn-sm btn-outline-primary">Edit</a>
+                            }
+                            else
+                            {
+                                <a href="/invoices/@invoice.Id" class="btn btn-sm btn-outline-secondary">View</a>
+                            }
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    private IReadOnlyList<InvoiceDto>? invoices;
+    private IReadOnlyList<ClientDto>? clients;
+    private string? error;
+    private string selectedClientId = "";
+    private string selectedStatus = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            clients = await ClientService.GetClientsAsync();
+            await LoadInvoicesAsync();
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+    }
+
+    private async Task LoadInvoicesAsync()
+    {
+        Guid? clientId = null;
+        InvoiceStatus? status = null;
+
+        if (Guid.TryParse(selectedClientId, out var parsedClientId))
+            clientId = parsedClientId;
+
+        if (!string.IsNullOrEmpty(selectedStatus) && Enum.TryParse<InvoiceStatus>(selectedStatus, out var parsedStatus))
+            status = parsedStatus;
+
+        try
+        {
+            invoices = await InvoiceService.GetAllInvoicesAsync(clientId, status);
+            error = null;
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+    }
+
+    private string GetClientName(Guid clientId)
+    {
+        if (clients is null) return "Unknown";
+        var client = clients.FirstOrDefault(c => c.Id == clientId);
+        return client?.Name ?? "Unknown";
+    }
+
+    private async Task ClearFilters()
+    {
+        selectedClientId = "";
+        selectedStatus = "";
+        await LoadInvoicesAsync();
+    }
+}

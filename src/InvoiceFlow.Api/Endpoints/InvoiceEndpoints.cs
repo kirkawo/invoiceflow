@@ -1,5 +1,6 @@
 using InvoiceFlow.Api.Endpoints.Contracts;
 using InvoiceFlow.Application.Invoices;
+using InvoiceFlow.Domain;
 
 namespace InvoiceFlow.Api.Endpoints;
 
@@ -31,6 +32,12 @@ public static class InvoiceEndpoints
             {
                 return Results.NotFound(new { error = ex.Message });
             }
+        });
+
+        group.MapGet("/", async (Guid? clientId, InvoiceStatus? status, InvoiceService invoiceService) =>
+        {
+            var invoices = await invoiceService.GetAllInvoicesAsync(clientId, status);
+            return Results.Ok(invoices);
         });
 
         group.MapGet("/{id:guid}", async (Guid id, InvoiceService invoiceService) =>
