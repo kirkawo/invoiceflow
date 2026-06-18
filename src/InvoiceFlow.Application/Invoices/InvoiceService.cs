@@ -18,7 +18,7 @@ public class InvoiceService
 
     public async Task<Guid> CreateInvoiceDraftAsync(
         Guid clientId,
-        string number,
+        string? number,
         DateTime issueDateUtc,
         DateTime dueDateUtc,
         string currency,
@@ -28,7 +28,9 @@ public class InvoiceService
         if (clientId == Guid.Empty)
             throw new ArgumentException("Client ID cannot be empty.", nameof(clientId));
 
-        ArgumentException.ThrowIfNullOrWhiteSpace(number);
+        if (string.IsNullOrWhiteSpace(number))
+            number = await _invoiceRepository.GetNextInvoiceNumberAsync(cancellationToken);
+
         ArgumentException.ThrowIfNullOrWhiteSpace(currency);
 
         var clientExists = await _clientRepository.GetByIdAsync(clientId, cancellationToken);

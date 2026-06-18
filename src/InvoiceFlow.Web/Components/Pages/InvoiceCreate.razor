@@ -1,4 +1,5 @@
 @page "/invoices/new"
+@page "/invoices/new/{ClientId:guid}"
 @attribute [Authorize]
 @rendermode InteractiveServer
 
@@ -20,8 +21,8 @@
     <ValidationSummary class="text-danger mb-3" />
     <div class="mb-3">
         <label for="client" class="form-label">Client</label>
-        <select id="client" class="form-select" @bind="model.ClientId">
-            <option value="">-- Select a client --</option>
+        <select id="client" class="form-select" @bind="model.ClientId" disabled="@ClientId.HasValue">
+            <option value="">@(ClientId.HasValue ? "" : "-- Select a client --")</option>
             @if (clients is not null)
             {
                 @foreach (var client in clients)
@@ -33,9 +34,8 @@
         <ValidationMessage For="@(() => model.ClientId)" />
     </div>
     <div class="mb-3">
-        <label for="number" class="form-label">Invoice Number</label>
-        <InputText id="number" class="form-control" @bind-Value="model.Number" />
-        <ValidationMessage For="@(() => model.Number)" />
+        <label class="form-label">Invoice Number</label>
+        <input type="text" class="form-control" value="Auto-generated on save" readonly disabled />
     </div>
     <div class="mb-3">
         <label for="issueDate" class="form-label">Issue Date</label>
@@ -66,11 +66,21 @@
     private string? error;
     private bool saving;
 
+    [Parameter]
+    public Guid? ClientId { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
         try
         {
             clients = await ClientService.GetClientsAsync();
+
+            if (ClientId.HasValue && clients is not null)
+            {
+                var client = clients.FirstOrDefault(c => c.Id == ClientId.Value);
+                if (client is not null)
+                    model.ClientId = ClientId.Value;
+            }
         }
         catch (Exception ex)
         {
@@ -93,7 +103,7 @@
 
             await InvoiceService.CreateInvoiceDraftAsync(
                 clientId,
-                model.Number,
+                null,
                 issueDate,
                 dueDate,
                 model.Currency,
@@ -115,9 +125,6 @@
     {
         [Required]
         public Guid? ClientId { get; set; }
-
-        [Required]
-        public string Number { get; set; } = string.Empty;
 
         [Required]
         public DateTime IssueDateUtc { get; set; } = DateTime.Today;

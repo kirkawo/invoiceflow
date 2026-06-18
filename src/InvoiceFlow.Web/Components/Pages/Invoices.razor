@@ -18,7 +18,7 @@
 <div class="row g-2 mb-3 align-items-end">
     <div class="col-sm-4">
         <label for="clientFilter" class="form-label">Client</label>
-        <select id="clientFilter" class="form-select" @bind="selectedClientId">
+        <select id="clientFilter" class="form-select" value="@selectedClientId" @onchange="OnClientFilterChanged">
             <option value="">All clients</option>
             @if (clients is not null)
             {
@@ -31,7 +31,7 @@
     </div>
     <div class="col-sm-3">
         <label for="statusFilter" class="form-label">Status</label>
-        <select id="statusFilter" class="form-select" @bind="selectedStatus">
+        <select id="statusFilter" class="form-select" value="@selectedStatus" @onchange="OnStatusFilterChanged">
             <option value="">All statuses</option>
             @foreach (var s in Enum.GetValues<InvoiceStatus>())
             {
@@ -148,6 +148,18 @@
         {
             error = ex.Message;
         }
+    }
+
+    private async Task OnClientFilterChanged(ChangeEventArgs e)
+    {
+        selectedClientId = e.Value?.ToString() ?? "";
+        await LoadInvoicesAsync();
+    }
+
+    private async Task OnStatusFilterChanged(ChangeEventArgs e)
+    {
+        selectedStatus = e.Value?.ToString() ?? "";
+        await LoadInvoicesAsync();
     }
 
     private string GetClientName(Guid clientId)
