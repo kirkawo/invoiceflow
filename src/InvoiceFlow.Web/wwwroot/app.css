@@ -164,203 +164,204 @@ h3 {
 }
 
 /* Public invoice page — document-style presentation */
-.public-invoice,
-.public-invoice-error,
-.public-invoice-loading {
+.public-invoice-page {
     min-height: 100vh;
-    background: #f9fafb;
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    padding: 40px 16px;
+    background: #f5f5f5;
+    padding: 48px 16px;
+    box-sizing: border-box;
 }
 
-.public-invoice-container {
+.public-invoice-card {
     width: 100%;
     max-width: 780px;
+    margin: 0 auto;
     background: #fff;
     border-radius: 12px;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
     padding: 48px 56px;
 }
 
 @media (max-width: 600px) {
-    .public-invoice-container {
+    .public-invoice-page {
+        padding: 16px 12px;
+    }
+
+    .public-invoice-card {
         padding: 28px 20px;
-        border-radius: 8px;
+        border-radius: 10px;
     }
 }
 
-.invoice-header {
+/* Header */
+.pi-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
 }
 
-.invoice-title {
+.pi-title {
     font-size: 1.75rem;
     font-weight: 700;
     color: #1a1a2e;
-    margin: 0;
     letter-spacing: 0.02em;
 }
 
-.invoice-number {
+.pi-number {
     font-size: 1rem;
     color: #666;
     font-weight: 500;
-    margin-top: 2px;
-    display: block;
+    margin-top: 4px;
 }
 
-.invoice-status-badge {
+.pi-badge {
     font-size: 0.8rem;
-    padding: 4px 12px;
+    padding: 4px 14px;
 }
 
-.invoice-divider {
+/* Divider */
+.pi-hr {
+    border: none;
     height: 1px;
     background: #e8e8e8;
     margin: 28px 0;
 }
 
-.invoice-meta {
+/* Metadata */
+.pi-meta {
     display: flex;
     gap: 48px;
 }
 
 @media (max-width: 600px) {
-    .invoice-meta {
+    .pi-meta {
         flex-direction: column;
         gap: 24px;
     }
 }
 
-.invoice-meta-billto {
+.pi-meta-billto {
     flex: 1;
 }
 
-.invoice-meta-dates {
+.pi-meta-dates {
     flex: 0 0 auto;
 }
 
-.meta-label {
-    font-size: 0.75rem;
+.pi-label {
+    font-size: 0.72rem;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.05em;
     color: #999;
     margin-bottom: 4px;
 }
 
-.meta-value {
+.pi-value {
     font-size: 0.95rem;
     color: #333;
-    margin: 0;
 }
 
-.meta-sub {
+.pi-sub {
     font-size: 0.9rem;
     color: #555;
     margin-top: 2px;
 }
 
-.meta-row {
+.pi-meta-row {
     display: flex;
     justify-content: space-between;
-    gap: 24px;
-    padding: 3px 0;
+    gap: 32px;
+    padding: 4px 0;
 }
 
-.meta-row .meta-label {
+.pi-meta-row .pi-label {
     margin-bottom: 0;
+    white-space: nowrap;
 }
 
-.meta-row .meta-value {
+.pi-meta-row .pi-value {
     text-align: right;
     white-space: nowrap;
 }
 
-.invoice-table {
+/* Table */
+.pi-table {
     width: 100%;
     border-collapse: collapse;
 }
 
-.invoice-table thead th {
+.pi-table thead th {
     border-bottom: 2px solid #e0e0e0;
     padding: 10px 8px;
-    font-size: 0.78rem;
+    font-size: 0.75rem;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.05em;
     color: #888;
 }
 
-.invoice-table tbody td {
+.pi-table tbody td {
     padding: 12px 8px;
     border-bottom: 1px solid #f0f0f0;
     font-size: 0.92rem;
     color: #333;
 }
 
-.invoice-table tbody tr:last-child td {
+.pi-table tbody tr:last-child td {
     border-bottom: none;
 }
 
-.invoice-total-row {
+/* Total row */
+.pi-total {
     display: flex;
     justify-content: flex-end;
     align-items: center;
     gap: 32px;
-    padding: 16px 8px 0;
+    padding: 20px 8px 0;
 }
 
-.total-label {
-    font-size: 0.95rem;
+.pi-total-label {
+    font-size: 0.9rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: #555;
 }
 
-.total-value {
+.pi-total-value {
     font-size: 1.25rem;
     font-weight: 700;
     color: #1a1a2e;
 }
 
-.invoice-notes {
-    margin: 0;
-}
-
-.invoice-notes .meta-value {
+/* Notes */
+.pi-notes .pi-value {
     white-space: pre-wrap;
     line-height: 1.6;
 }
 
-.invoice-footer {
+/* Footer */
+.pi-footer {
     text-align: center;
     font-size: 0.8rem;
     color: #aaa;
 }
 
-/* Print styles for public invoice */
+/* Print styles */
 @media print {
-    .public-invoice,
-    .public-invoice-error,
-    .public-invoice-loading {
+    .public-invoice-page {
         padding: 0;
         background: #fff;
         min-height: auto;
     }
 
-    .public-invoice-container {
+    .public-invoice-card {
         box-shadow: none;
         border-radius: 0;
         padding: 40px;
     }
 
-    .invoice-divider {
+    .pi-hr {
         print-color-adjust: exact;
     }
 }
