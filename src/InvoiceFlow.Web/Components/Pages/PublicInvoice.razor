@@ -1,93 +1,115 @@
 @page "/invoices/public/{publicId}"
+@layout BlankLayout
 @attribute [AllowAnonymous]
 @rendermode InteractiveServer
 
 @inject PublicInvoiceService PublicInvoiceService
 
-<PageTitle>Invoice - InvoiceFlow</PageTitle>
+<PageTitle>Invoice @invoice?.Number - InvoiceFlow</PageTitle>
 
 @if (error is not null)
 {
-    <div class="alert alert-danger">@error</div>
+    <div class="public-invoice-error">
+        <div class="public-invoice-container">
+            <div class="alert alert-danger mb-0">@error</div>
+        </div>
+    </div>
 }
 else if (invoice is null)
 {
-    <p class="text-muted">Loading...</p>
+    <div class="public-invoice-loading">
+        <div class="public-invoice-container">
+            <p class="text-muted">Loading...</p>
+        </div>
+    </div>
 }
 else
 {
     <div class="public-invoice">
-        <div class="card mb-4">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <h1 class="mb-1">INVOICE</h1>
-                        <h4 class="text-muted">#@invoice.Number</h4>
-                    </div>
-                    <span class="badge @StatusClass(invoice.Status)" style="font-size: 1rem;">@invoice.Status</span>
+        <div class="public-invoice-container">
+            <div class="invoice-header">
+                <div class="invoice-header-left">
+                    <h1 class="invoice-title">INVOICE</h1>
+                    <span class="invoice-number">#@invoice.Number</span>
                 </div>
+                <div class="invoice-header-right">
+                    <span class="badge @StatusClass(invoice.Status) invoice-status-badge">@invoice.Status</span>
+                </div>
+            </div>
 
-                <hr />
+            <div class="invoice-divider"></div>
 
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <h5>Bill To</h5>
-                        <p class="mb-0">@invoice.ClientName</p>
-                        @if (!string.IsNullOrWhiteSpace(invoice.ClientCompany))
-                        {
-                            <p class="mb-0">@invoice.ClientCompany</p>
-                        }
-                        @if (!string.IsNullOrWhiteSpace(invoice.ClientEmail))
-                        {
-                            <p class="mb-0">@invoice.ClientEmail</p>
-                        }
+            <div class="invoice-meta">
+                <div class="invoice-meta-billto">
+                    <div class="meta-label">Bill To</div>
+                    <div class="meta-value">@invoice.ClientName</div>
+                    @if (!string.IsNullOrWhiteSpace(invoice.ClientCompany))
+                    {
+                        <div class="meta-sub">@invoice.ClientCompany</div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(invoice.ClientEmail))
+                    {
+                        <div class="meta-sub">@invoice.ClientEmail</div>
+                    }
+                </div>
+                <div class="invoice-meta-dates">
+                    <div class="meta-row">
+                        <span class="meta-label">Issue Date</span>
+                        <span class="meta-value">@invoice.IssueDateUtc.ToShortDateString()</span>
                     </div>
-                    <div class="col-md-6 text-md-end">
-                        <p class="mb-0"><strong>Issue Date:</strong> @invoice.IssueDateUtc.ToShortDateString()</p>
-                        <p class="mb-0"><strong>Due Date:</strong> @invoice.DueDateUtc.ToShortDateString()</p>
-                        <p class="mb-0"><strong>Currency:</strong> @invoice.Currency</p>
+                    <div class="meta-row">
+                        <span class="meta-label">Due Date</span>
+                        <span class="meta-value">@invoice.DueDateUtc.ToShortDateString()</span>
+                    </div>
+                    <div class="meta-row">
+                        <span class="meta-label">Currency</span>
+                        <span class="meta-value">@invoice.Currency</span>
                     </div>
                 </div>
+            </div>
 
-                <table class="table">
-                    <thead>
+            <div class="invoice-divider"></div>
+
+            <table class="invoice-table">
+                <thead>
+                    <tr>
+                        <th>Description</th>
+                        <th class="text-end">Qty</th>
+                        <th class="text-end">Unit Price</th>
+                        <th class="text-end">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var line in invoice.LineItems)
+                    {
                         <tr>
-                            <th>Description</th>
-                            <th class="text-end">Quantity</th>
-                            <th class="text-end">Unit Price</th>
-                            <th class="text-end">Amount</th>
+                            <td>@line.Description</td>
+                            <td class="text-end">@line.Quantity.ToString("0.##")</td>
+                            <td class="text-end">@line.UnitPrice.ToString("F2")</td>
+                            <td class="text-end">@line.Amount.ToString("F2")</td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var line in invoice.LineItems)
-                        {
-                            <tr>
-                                <td>@line.Description</td>
-                                <td class="text-end">@line.Quantity.ToString("0.##")</td>
-                                <td class="text-end">@line.UnitPrice.ToString("F2")</td>
-                                <td class="text-end">@line.Amount.ToString("F2")</td>
-                            </tr>
-                        }
-                    </tbody>
-                    <tfoot>
-                        <tr class="fw-bold">
-                            <td colspan="3" class="text-end">Total:</td>
-                            <td class="text-end">@invoice.Currency @invoice.Total.ToString("F2")</td>
-                        </tr>
-                    </tfoot>
-                </table>
+                    }
+                </tbody>
+            </table>
 
-                @if (!string.IsNullOrWhiteSpace(invoice.Notes))
-                {
-                    <div class="mt-3">
-                        <h5>Notes</h5>
-                        <p class="text-muted">@invoice.Notes</p>
-                    </div>
-                }
+            <div class="invoice-total-row">
+                <span class="total-label">Total</span>
+                <span class="total-value">@invoice.Currency @invoice.Total.ToString("F2")</span>
+            </div>
 
-                <div class="mt-4 text-muted small">
-                    <p>This invoice was shared via InvoiceFlow.</p>
+            <div class="invoice-divider"></div>
+
+            @if (!string.IsNullOrWhiteSpace(invoice.Notes))
+            {
+                <div class="invoice-notes">
+                    <div class="meta-label">Notes</div>
+                    <p class="meta-value">@invoice.Notes</p>
                 </div>
+                <div class="invoice-divider"></div>
+            }
+
+            <div class="invoice-footer">
+                This invoice was shared via InvoiceFlow.
             </div>
         </div>
     </div>

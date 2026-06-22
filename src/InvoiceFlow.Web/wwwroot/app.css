@@ -94,6 +94,15 @@ h3 {
     color: #333;
 }
 
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 1.25rem;
+}
+
 .card {
     border: none;
     border-radius: 12px;
@@ -137,6 +146,223 @@ h3 {
 .alert-danger {
     background-color: #fce8e6;
     color: #c5221f;
+}
+
+.alert-success {
+    background-color: #e6f4ea;
+    color: #1e7e34;
+    border: none;
+    border-radius: 10px;
+}
+
+.fw-semibold {
+    font-weight: 600;
+}
+
+.text-pre-wrap {
+    white-space: pre-wrap;
+}
+
+/* Public invoice page — document-style presentation */
+.public-invoice,
+.public-invoice-error,
+.public-invoice-loading {
+    min-height: 100vh;
+    background: #f9fafb;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 40px 16px;
+}
+
+.public-invoice-container {
+    width: 100%;
+    max-width: 780px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.04);
+    padding: 48px 56px;
+}
+
+@media (max-width: 600px) {
+    .public-invoice-container {
+        padding: 28px 20px;
+        border-radius: 8px;
+    }
+}
+
+.invoice-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.invoice-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin: 0;
+    letter-spacing: 0.02em;
+}
+
+.invoice-number {
+    font-size: 1rem;
+    color: #666;
+    font-weight: 500;
+    margin-top: 2px;
+    display: block;
+}
+
+.invoice-status-badge {
+    font-size: 0.8rem;
+    padding: 4px 12px;
+}
+
+.invoice-divider {
+    height: 1px;
+    background: #e8e8e8;
+    margin: 28px 0;
+}
+
+.invoice-meta {
+    display: flex;
+    gap: 48px;
+}
+
+@media (max-width: 600px) {
+    .invoice-meta {
+        flex-direction: column;
+        gap: 24px;
+    }
+}
+
+.invoice-meta-billto {
+    flex: 1;
+}
+
+.invoice-meta-dates {
+    flex: 0 0 auto;
+}
+
+.meta-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #999;
+    margin-bottom: 4px;
+}
+
+.meta-value {
+    font-size: 0.95rem;
+    color: #333;
+    margin: 0;
+}
+
+.meta-sub {
+    font-size: 0.9rem;
+    color: #555;
+    margin-top: 2px;
+}
+
+.meta-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 3px 0;
+}
+
+.meta-row .meta-label {
+    margin-bottom: 0;
+}
+
+.meta-row .meta-value {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.invoice-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.invoice-table thead th {
+    border-bottom: 2px solid #e0e0e0;
+    padding: 10px 8px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #888;
+}
+
+.invoice-table tbody td {
+    padding: 12px 8px;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 0.92rem;
+    color: #333;
+}
+
+.invoice-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.invoice-total-row {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 32px;
+    padding: 16px 8px 0;
+}
+
+.total-label {
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #555;
+}
+
+.total-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1a1a2e;
+}
+
+.invoice-notes {
+    margin: 0;
+}
+
+.invoice-notes .meta-value {
+    white-space: pre-wrap;
+    line-height: 1.6;
+}
+
+.invoice-footer {
+    text-align: center;
+    font-size: 0.8rem;
+    color: #aaa;
+}
+
+/* Print styles for public invoice */
+@media print {
+    .public-invoice,
+    .public-invoice-error,
+    .public-invoice-loading {
+        padding: 0;
+        background: #fff;
+        min-height: auto;
+    }
+
+    .public-invoice-container {
+        box-shadow: none;
+        border-radius: 0;
+        padding: 40px;
+    }
+
+    .invoice-divider {
+        print-color-adjust: exact;
+    }
 }
 
 .form-control, .form-select {
