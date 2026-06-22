@@ -14,6 +14,8 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         builder.Property(i => i.WorkspaceId).IsRequired();
         builder.Property(i => i.ClientId).IsRequired();
         builder.Property(i => i.Number).HasMaxLength(50).IsRequired();
+        builder.Property(i => i.PublicId).HasMaxLength(50).IsRequired();
+        builder.HasIndex(i => i.PublicId).IsUnique().HasDatabaseName("IX_Invoices_PublicId");
         builder.Property(i => i.IssueDateUtc).IsRequired();
         builder.Property(i => i.DueDateUtc).IsRequired();
         builder.Property(i => i.Status)

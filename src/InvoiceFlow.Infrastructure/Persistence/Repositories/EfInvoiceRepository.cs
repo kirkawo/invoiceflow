@@ -23,6 +23,13 @@ public class EfInvoiceRepository : IInvoiceRepository
             .FirstOrDefaultAsync(i => i.WorkspaceId == workspaceId && i.Id == id, cancellationToken);
     }
 
+    public async Task<Invoice?> GetByPublicIdAsync(string publicId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Invoices
+            .Include(i => i.LineItems)
+            .FirstOrDefaultAsync(i => i.PublicId == publicId, cancellationToken);
+    }
+
     public async Task AddAsync(Invoice invoice, CancellationToken cancellationToken = default)
     {
         await _context.Invoices.AddAsync(invoice, cancellationToken);

@@ -11,6 +11,9 @@ public class InMemoryInvoiceRepository : IInvoiceRepository
     public Task<Invoice?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         Task.FromResult(_store.TryGetValue(id, out var invoice) ? invoice : null);
 
+    public Task<Invoice?> GetByPublicIdAsync(string publicId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(_store.Values.FirstOrDefault(i => i.PublicId == publicId));
+
     public Task AddAsync(Invoice invoice, CancellationToken cancellationToken = default)
     {
         _store[invoice.Id] = invoice;

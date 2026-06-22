@@ -1,4 +1,5 @@
 using InvoiceFlow.Api.Endpoints.Contracts;
+using InvoiceFlow.Application.Abstractions;
 using InvoiceFlow.Application.Invoices;
 using InvoiceFlow.Domain;
 
@@ -143,6 +144,20 @@ public static class InvoiceEndpoints
             {
                 return Results.BadRequest(new { error = ex.Message });
             }
+        });
+
+        group.MapGet("/{id:guid}/pdf", async (Guid id, InvoiceService invoiceService, IInvoicePdfService pdfService) =>
+        {
+            var invoiceDto = await invoiceService.GetInvoiceAsync(id);
+            if (invoiceDto is null)
+                return Results.NotFound();
+
+            var invoice = await invoiceService.LoadInvoiceDomainAsync(id);
+            if (invoice is null)
+                return Results.NotFound();
+
+            var pdf = pdfService.GeneratePdf(invoice);
+            return Results.File(pdf, "application/pdf", $"invoice-{invoiceDto.Number}.pdf");
         });
 
         return app;

@@ -48,6 +48,46 @@ public class InvoiceService
         return invoice is not null ? MapToDto(invoice) : null;
     }
 
+    public async Task<PublicInvoiceDto?> GetPublicInvoiceAsync(string publicId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(publicId))
+            return null;
+
+        var invoice = await _invoiceRepository.GetByPublicIdAsync(publicId, cancellationToken);
+        if (invoice is null)
+            return null;
+
+        if (invoice.Status is InvoiceStatus.Draft or InvoiceStatus.Cancelled)
+            return null;
+
+        var client = await _clientRepository.GetByIdAsync(invoice.ClientId, cancellationToken);
+
+        return new PublicInvoiceDto
+        {
+            Number = invoice.Number,
+            ClientName = client?.Name ?? "Unknown",
+            ClientEmail = client?.Email,
+            ClientCompany = client?.CompanyName,
+            Status = invoice.Status,
+            Currency = invoice.Currency,
+            Total = invoice.Total,
+            IssueDateUtc = invoice.IssueDateUtc,
+            DueDateUtc = invoice.DueDateUtc,
+            Notes = invoice.Notes,
+            LineItems = invoice.LineItems
+                .Select(li => new InvoiceLineItemDto
+                {
+                    Id = li.Id,
+                    Description = li.Description,
+                    Quantity = li.Quantity,
+                    UnitPrice = li.UnitPrice,
+                    Amount = li.Amount
+                })
+                .ToList()
+                .AsReadOnly()
+        };
+    }
+
     public async Task<IReadOnlyList<InvoiceDto>> GetAllInvoicesAsync(
         Guid? clientId = null,
         InvoiceStatus? status = null,
@@ -164,12 +204,18 @@ public class InvoiceService
         await _invoiceRepository.UpdateAsync(invoice, cancellationToken);
     }
 
+    public async Task<Invoice?> LoadInvoiceDomainAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return await _invoiceRepository.GetByIdAsync(id, cancellationToken);
+    }
+
     private static InvoiceDto MapToDto(Invoice invoice) =>
         new()
         {
             Id = invoice.Id,
             ClientId = invoice.ClientId,
             Number = invoice.Number,
+            PublicId = invoice.PublicId,
             IssueDateUtc = invoice.IssueDateUtc,
             DueDateUtc = invoice.DueDateUtc,
             Status = invoice.Status,

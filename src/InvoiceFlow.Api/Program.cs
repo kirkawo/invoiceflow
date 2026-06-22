@@ -2,6 +2,7 @@ using System.Security.Claims;
 using InvoiceFlow.Application;
 using InvoiceFlow.Infrastructure;
 using InvoiceFlow.Infrastructure.Persistence;
+using InvoiceFlow.Pdf;
 using InvoiceFlow.Api.Endpoints;
 using InvoiceFlow.Domain;
 using Microsoft.AspNetCore.Identity;
@@ -11,7 +12,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services
     .AddApplication()
-    .AddInfrastructure(builder.Configuration);
+    .AddInfrastructure(builder.Configuration)
+    .AddPdf();
 
 builder.Services.AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
     {
@@ -82,6 +84,7 @@ app.MapPost("/api/auth/logout", async (SignInManager<ApplicationUser> signInMana
 app.MapClientEndpoints();
 app.MapInvoiceEndpoints();
 app.MapClientInvoiceEndpoints();
+app.MapPublicEndpoints();
 
 app.Run();
 

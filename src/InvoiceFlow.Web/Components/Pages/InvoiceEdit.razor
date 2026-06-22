@@ -6,6 +6,7 @@
 @inject ClientService ClientService
 @inject NavigationManager Navigation
 @inject IJSRuntime JsRuntime
+@inject IHttpClientFactory HttpClientFactory
 
 <PageTitle>Edit Invoice - InvoiceFlow</PageTitle>
 
@@ -60,6 +61,18 @@ else
             }
         </div>
     </div>
+
+    @if (invoice.Status != InvoiceStatus.Draft)
+    {
+        <div class="mb-3 d-flex gap-2">
+            <button class="btn btn-outline-primary" @onclick="DownloadPdf">
+                Download PDF
+            </button>
+            <button class="btn btn-outline-secondary" @onclick="CopyPublicLink">
+                Copy Public Link
+            </button>
+        </div>
+    }
 
     <h3>Line Items</h3>
 
@@ -311,5 +324,23 @@ else
         {
             saving = false;
         }
+    }
+
+    private void DownloadPdf()
+    {
+        var apiBase = HttpClientFactory.CreateClient("Api").BaseAddress?.ToString().TrimEnd('/')
+            ?? new Uri(Navigation.BaseUri).GetLeftPart(UriPartial.Authority);
+        var pdfUrl = $"{apiBase}/api/invoices/{Id}/pdf";
+        Navigation.NavigateTo(pdfUrl, true);
+    }
+
+    private async Task CopyPublicLink()
+    {
+        if (invoice is null || string.IsNullOrWhiteSpace(invoice.PublicId))
+            return;
+
+        var baseUri = new Uri(Navigation.BaseUri).GetLeftPart(UriPartial.Authority);
+        var publicUrl = $"{baseUri}/invoices/public/{invoice.PublicId}";
+        await JsRuntime.InvokeVoidAsync("navigator.clipboard.writeText", publicUrl);
     }
 }
