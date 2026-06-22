@@ -8,9 +8,9 @@ public static class PublicEndpoints
     {
         var group = app.MapGroup("/api/public");
 
-        group.MapGet("/invoices/{publicId}", async (string publicId, InvoiceService invoiceService) =>
+        group.MapGet("/invoices/{publicId}", async (string publicId, PublicInvoiceService publicInvoiceService) =>
         {
-            var invoice = await invoiceService.GetPublicInvoiceAsync(publicId);
+            var invoice = await publicInvoiceService.GetPublicInvoiceAsync(publicId);
             return invoice is not null ? Results.Ok(invoice) : Results.NotFound();
         });
 

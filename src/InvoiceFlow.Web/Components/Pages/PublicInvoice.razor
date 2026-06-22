@@ -2,8 +2,7 @@
 @attribute [AllowAnonymous]
 @rendermode InteractiveServer
 
-@inject IHttpClientFactory HttpClientFactory
-@inject NavigationManager Navigation
+@inject PublicInvoiceService PublicInvoiceService
 
 <PageTitle>Invoice - InvoiceFlow</PageTitle>
 
@@ -105,14 +104,13 @@ else
     {
         try
         {
-            var client = HttpClientFactory.CreateClient("Api");
-            invoice = await client.GetFromJsonAsync<PublicInvoiceDto>($"/api/public/invoices/{PublicId}");
+            invoice = await PublicInvoiceService.GetPublicInvoiceAsync(PublicId);
             if (invoice is null)
             {
                 error = "Invoice not found.";
             }
         }
-        catch (HttpRequestException)
+        catch (Exception)
         {
             error = "Invoice not found.";
         }

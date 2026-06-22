@@ -11,6 +11,9 @@ public class InMemoryClientRepository : IClientRepository
     public Task<Client?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         Task.FromResult(_store.TryGetValue(id, out var client) ? client : null);
 
+    public Task<Client?> GetByIdUnfilteredAsync(Guid id, CancellationToken cancellationToken = default) =>
+        Task.FromResult(_store.TryGetValue(id, out var client) ? client : null);
+
     public Task AddAsync(Client client, CancellationToken cancellationToken = default)
     {
         _store[client.Id] = client;

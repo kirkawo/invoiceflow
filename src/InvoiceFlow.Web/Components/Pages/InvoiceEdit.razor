@@ -6,7 +6,6 @@
 @inject ClientService ClientService
 @inject NavigationManager Navigation
 @inject IJSRuntime JsRuntime
-@inject IHttpClientFactory HttpClientFactory
 
 <PageTitle>Edit Invoice - InvoiceFlow</PageTitle>
 
@@ -328,10 +327,7 @@ else
 
     private void DownloadPdf()
     {
-        var apiBase = HttpClientFactory.CreateClient("Api").BaseAddress?.ToString().TrimEnd('/')
-            ?? new Uri(Navigation.BaseUri).GetLeftPart(UriPartial.Authority);
-        var pdfUrl = $"{apiBase}/api/invoices/{Id}/pdf";
-        Navigation.NavigateTo(pdfUrl, true);
+        Navigation.NavigateTo($"/invoices/{Id}/pdf", true);
     }
 
     private async Task CopyPublicLink()

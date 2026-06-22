@@ -1,7 +1,10 @@
 using System.Security.Claims;
 using InvoiceFlow.Application;
+using InvoiceFlow.Application.Abstractions;
+using InvoiceFlow.Application.Invoices;
 using InvoiceFlow.Infrastructure;
 using InvoiceFlow.Infrastructure.Persistence;
+using InvoiceFlow.Pdf;
 using InvoiceFlow.Web.Components;
 using Microsoft.AspNetCore.Identity;
 
@@ -9,7 +12,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services
     .AddApplication()
-    .AddInfrastructure(builder.Configuration);
+    .AddInfrastructure(builder.Configuration)
+    .AddPdf();
 
 builder.Services.AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
     {
@@ -33,11 +37,6 @@ builder.Services.ConfigureApplicationCookie(options =>
 
 builder.Services.AddAuthorization();
 builder.Services.AddCascadingAuthenticationState();
-
-builder.Services.AddHttpClient("Api", client =>
-{
-    client.BaseAddress = new Uri(builder.Configuration.GetValue<string>("ApiBaseUrl") ?? "http://localhost:5232");
-});
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
@@ -82,6 +81,16 @@ app.MapPost("/auth/logout", async (SignInManager<ApplicationUser> signInManager)
 {
     await signInManager.SignOutAsync();
     return Results.Redirect("/login");
+}).RequireAuthorization();
+
+app.MapGet("/invoices/{id:guid}/pdf", async (Guid id, InvoiceService invoiceService, IInvoicePdfService pdfService) =>
+{
+    var invoice = await invoiceService.LoadInvoiceDomainAsync(id);
+    if (invoice is null)
+        return Results.NotFound();
+
+    var pdf = pdfService.GeneratePdf(invoice);
+    return Results.File(pdf, "application/pdf", $"invoice-{invoice.Number}.pdf");
 }).RequireAuthorization();
 
 app.MapRazorComponents<App>()
