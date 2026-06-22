@@ -167,14 +167,16 @@ h3 {
 .public-invoice-page {
     min-height: 100vh;
     background: #f5f5f5;
-    padding: 48px 16px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 40px 16px;
     box-sizing: border-box;
 }
 
-.public-invoice-card {
+.public-invoice-wrapper {
     width: 100%;
     max-width: 780px;
-    margin: 0 auto;
     background: #fff;
     border-radius: 12px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
@@ -186,165 +188,26 @@ h3 {
         padding: 16px 12px;
     }
 
-    .public-invoice-card {
-        padding: 28px 20px;
-        border-radius: 10px;
+    .public-invoice-wrapper {
+        padding: 24px 16px;
+        border-radius: 8px;
     }
 }
 
-/* Header */
-.pi-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-}
-
-.pi-title {
+.public-invoice-heading {
     font-size: 1.75rem;
     font-weight: 700;
     color: #1a1a2e;
+    margin: 0;
     letter-spacing: 0.02em;
 }
 
-.pi-number {
-    font-size: 1rem;
-    color: #666;
-    font-weight: 500;
-    margin-top: 4px;
-}
-
-.pi-badge {
-    font-size: 0.8rem;
-    padding: 4px 14px;
-}
-
-/* Divider */
-.pi-hr {
-    border: none;
-    height: 1px;
-    background: #e8e8e8;
-    margin: 28px 0;
-}
-
-/* Metadata */
-.pi-meta {
-    display: flex;
-    gap: 48px;
-}
-
-@media (max-width: 600px) {
-    .pi-meta {
-        flex-direction: column;
-        gap: 24px;
-    }
-}
-
-.pi-meta-billto {
-    flex: 1;
-}
-
-.pi-meta-dates {
-    flex: 0 0 auto;
-}
-
-.pi-label {
+.public-invoice-label {
     font-size: 0.72rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: #999;
-    margin-bottom: 4px;
-}
-
-.pi-value {
-    font-size: 0.95rem;
-    color: #333;
-}
-
-.pi-sub {
-    font-size: 0.9rem;
-    color: #555;
-    margin-top: 2px;
-}
-
-.pi-meta-row {
-    display: flex;
-    justify-content: space-between;
-    gap: 32px;
-    padding: 4px 0;
-}
-
-.pi-meta-row .pi-label {
-    margin-bottom: 0;
-    white-space: nowrap;
-}
-
-.pi-meta-row .pi-value {
-    text-align: right;
-    white-space: nowrap;
-}
-
-/* Table */
-.pi-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.pi-table thead th {
-    border-bottom: 2px solid #e0e0e0;
-    padding: 10px 8px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: #888;
-}
-
-.pi-table tbody td {
-    padding: 12px 8px;
-    border-bottom: 1px solid #f0f0f0;
-    font-size: 0.92rem;
-    color: #333;
-}
-
-.pi-table tbody tr:last-child td {
-    border-bottom: none;
-}
-
-/* Total row */
-.pi-total {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    gap: 32px;
-    padding: 20px 8px 0;
-}
-
-.pi-total-label {
-    font-size: 0.9rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: #555;
-}
-
-.pi-total-value {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: #1a1a2e;
-}
-
-/* Notes */
-.pi-notes .pi-value {
-    white-space: pre-wrap;
-    line-height: 1.6;
-}
-
-/* Footer */
-.pi-footer {
-    text-align: center;
-    font-size: 0.8rem;
-    color: #aaa;
 }
 
 /* Print styles */
@@ -355,14 +218,10 @@ h3 {
         min-height: auto;
     }
 
-    .public-invoice-card {
+    .public-invoice-wrapper {
         box-shadow: none;
         border-radius: 0;
         padding: 40px;
-    }
-
-    .pi-hr {
-        print-color-adjust: exact;
     }
 }
 

@@ -10,7 +10,7 @@
 @if (error is not null)
 {
     <div class="public-invoice-page">
-        <div class="public-invoice-card">
+        <div class="public-invoice-wrapper">
             <div class="alert alert-danger mb-0">@error</div>
         </div>
     </div>
@@ -18,7 +18,7 @@
 else if (invoice is null)
 {
     <div class="public-invoice-page">
-        <div class="public-invoice-card">
+        <div class="public-invoice-wrapper">
             <p class="text-muted mb-0">Loading...</p>
         </div>
     </div>
@@ -26,51 +26,51 @@ else if (invoice is null)
 else
 {
     <div class="public-invoice-page">
-        <div class="public-invoice-card">
+        <div class="public-invoice-wrapper">
 
-            <div class="pi-header">
+            <div class="d-flex justify-content-between align-items-start">
                 <div>
-                    <div class="pi-title">INVOICE</div>
-                    <div class="pi-number">#@invoice.Number</div>
+                    <h1 class="public-invoice-heading">INVOICE</h1>
+                    <div class="text-muted fs-5">#@invoice.Number</div>
                 </div>
-                <span class="badge @StatusClass(invoice.Status) pi-badge">@invoice.Status</span>
+                <span class="badge @StatusClass(invoice.Status) fs-6">@invoice.Status</span>
             </div>
 
-            <hr class="pi-hr" />
+            <hr class="my-4" />
 
-            <div class="pi-meta">
-                <div class="pi-meta-billto">
-                    <div class="pi-label">Bill To</div>
-                    <div class="pi-value">@invoice.ClientName</div>
+            <div class="row mb-2">
+                <div class="col-md-6 mb-3 mb-md-0">
+                    <div class="public-invoice-label">Bill To</div>
+                    <div class="fw-medium">@invoice.ClientName</div>
                     @if (!string.IsNullOrWhiteSpace(invoice.ClientCompany))
                     {
-                        <div class="pi-sub">@invoice.ClientCompany</div>
+                        <div class="text-muted">@invoice.ClientCompany</div>
                     }
                     @if (!string.IsNullOrWhiteSpace(invoice.ClientEmail))
                     {
-                        <div class="pi-sub">@invoice.ClientEmail</div>
+                        <div class="text-muted">@invoice.ClientEmail</div>
                     }
                 </div>
-                <div class="pi-meta-dates">
-                    <div class="pi-meta-row">
-                        <span class="pi-label">Issue Date</span>
-                        <span class="pi-value">@invoice.IssueDateUtc.ToShortDateString()</span>
+                <div class="col-md-6">
+                    <div class="row">
+                        <div class="col-6 public-invoice-label">Issue Date</div>
+                        <div class="col-6 text-end">@invoice.IssueDateUtc.ToShortDateString()</div>
                     </div>
-                    <div class="pi-meta-row">
-                        <span class="pi-label">Due Date</span>
-                        <span class="pi-value">@invoice.DueDateUtc.ToShortDateString()</span>
+                    <div class="row">
+                        <div class="col-6 public-invoice-label">Due Date</div>
+                        <div class="col-6 text-end">@invoice.DueDateUtc.ToShortDateString()</div>
                     </div>
-                    <div class="pi-meta-row">
-                        <span class="pi-label">Currency</span>
-                        <span class="pi-value">@invoice.Currency</span>
+                    <div class="row">
+                        <div class="col-6 public-invoice-label">Currency</div>
+                        <div class="col-6 text-end">@invoice.Currency</div>
                     </div>
                 </div>
             </div>
 
-            <hr class="pi-hr" />
+            <hr class="my-4" />
 
             <div class="table-responsive">
-                <table class="pi-table">
+                <table class="table">
                     <thead>
                         <tr>
                             <th>Description</th>
@@ -90,26 +90,29 @@ else
                             </tr>
                         }
                     </tbody>
+                    <tfoot>
+                        <tr class="fw-bold fs-5">
+                            <td colspan="3" class="text-end">Total:</td>
+                            <td class="text-end">@invoice.Currency @invoice.Total.ToString("F2")</td>
+                        </tr>
+                    </tfoot>
                 </table>
-            </div>
-
-            <div class="pi-total">
-                <span class="pi-total-label">Total</span>
-                <span class="pi-total-value">@invoice.Currency @invoice.Total.ToString("F2")</span>
             </div>
 
             @if (!string.IsNullOrWhiteSpace(invoice.Notes))
             {
-                <hr class="pi-hr" />
-                <div class="pi-notes">
-                    <div class="pi-label">Notes</div>
-                    <p class="pi-value mb-0">@invoice.Notes</p>
+                <hr class="my-4" />
+                <div>
+                    <div class="public-invoice-label">Notes</div>
+                    <p class="text-pre-wrap mb-0">@invoice.Notes</p>
                 </div>
             }
 
-            <hr class="pi-hr" />
+            <hr class="my-4" />
 
-            <div class="pi-footer">This invoice was shared via InvoiceFlow.</div>
+            <div class="text-center text-muted small">
+                This invoice was shared via InvoiceFlow.
+            </div>
 
         </div>
     </div>
