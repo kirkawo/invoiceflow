@@ -1,8 +1,6 @@
 @page "/invoices/public/{publicId}"
 @layout BlankLayout
 @attribute [AllowAnonymous]
-@rendermode InteractiveServer
-
 @inject PublicInvoiceService PublicInvoiceService
 
 <PageTitle>Invoice @invoice?.Number - InvoiceFlow</PageTitle>
