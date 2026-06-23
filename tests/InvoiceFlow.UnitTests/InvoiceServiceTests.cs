@@ -292,6 +292,25 @@ public class InvoiceServiceTests
         Assert.Empty(invoices);
     }
 
+    [Fact]
+    public async Task PublicFlow_RoundTrip_ByPublicId()
+    {
+        var clientId = await CreateClientAsync();
+        var invoiceId = await CreateDraftInvoiceAsync(clientId);
+        await _service.AddLineItemAsync(invoiceId, "Consulting", 10, 100);
+        await _service.IssueInvoiceAsync(invoiceId);
+
+        var dto = await _service.GetInvoiceAsync(invoiceId);
+        Assert.NotNull(dto);
+        Assert.NotEmpty(dto.PublicId);
+
+        var publicService = new PublicInvoiceService(_invoiceRepository, _clientRepository);
+        var publicDto = await publicService.GetPublicInvoiceAsync(dto.PublicId);
+
+        Assert.NotNull(publicDto);
+        Assert.Equal(dto.Number, publicDto.Number);
+    }
+
     private async Task<Guid> CreateDraftInvoiceAsync(Guid clientId)
     {
         var issueDate = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -305,6 +324,9 @@ public class FakeInvoiceRepository : IInvoiceRepository
 
     public Task<Invoice?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         Task.FromResult(_store.TryGetValue(id, out var invoice) ? invoice : null);
+
+    public Task<Invoice?> GetByPublicIdAsync(string publicId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(_store.Values.FirstOrDefault(i => i.PublicId == publicId));
 
     public Task AddAsync(Invoice invoice, CancellationToken cancellationToken = default)
     {

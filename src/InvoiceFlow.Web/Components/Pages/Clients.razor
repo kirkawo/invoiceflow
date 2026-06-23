@@ -6,9 +6,10 @@
 
 <PageTitle>Clients - InvoiceFlow</PageTitle>
 
-<h1>Clients</h1>
-
-<a href="/clients/new" class="btn btn-primary mb-3">Create Client</a>
+<div class="page-header">
+    <h1 class="mb-0">Clients</h1>
+    <a href="/clients/new" class="btn btn-primary">Create Client</a>
+</div>
 
 @if (error is not null)
 {
@@ -17,37 +18,75 @@
 
 @if (clients is null)
 {
-    <p>Loading...</p>
+    <p class="text-muted">Loading...</p>
 }
 else if (clients.Count == 0)
 {
-    <div class="alert alert-info">No clients yet. <a href="/clients/new">Create one</a>.</div>
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <p class="text-muted mb-2">No clients yet.</p>
+            <a href="/clients/new" class="btn btn-primary">Create one</a>
+        </div>
+    </div>
 }
 else
 {
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Company</th>
-                <th>Created</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var client in clients)
-            {
-                <tr>
-                    <td>@client.Name</td>
-                    <td>@client.Email</td>
-                    <td>@client.CompanyName</td>
-                    <td>@client.CreatedAtUtc.ToShortDateString()</td>
-                    <td><a href="/clients/@client.Id/invoices" class="btn btn-sm btn-outline-secondary">Invoices</a></td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    @* Desktop table *@
+    <div class="card d-none d-md-block">
+        <div class="card-body p-0">
+            <table class="table mb-0">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Company</th>
+                        <th>Created</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var client in clients)
+                    {
+                        <tr>
+                            <td>@client.Name</td>
+                            <td>@client.Email</td>
+                            <td>@client.CompanyName</td>
+                            <td>@client.CreatedAtUtc.ToShortDateString()</td>
+                            <td><a href="/clients/@client.Id/invoices" class="btn btn-sm btn-outline-secondary">Invoices</a></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    @* Mobile cards *@
+    <div class="d-md-none">
+        @foreach (var client in clients)
+        {
+            <div class="invoice-card">
+                <div class="card-row">
+                    <span class="card-label">Name</span>
+                    <span class="card-value fw-semibold">@client.Name</span>
+                </div>
+                <div class="card-row">
+                    <span class="card-label">Email</span>
+                    <span class="card-value">@client.Email</span>
+                </div>
+                <div class="card-row">
+                    <span class="card-label">Company</span>
+                    <span class="card-value">@(string.IsNullOrWhiteSpace(client.CompanyName) ? "—" : client.CompanyName)</span>
+                </div>
+                <div class="card-row">
+                    <span class="card-label">Created</span>
+                    <span class="card-value">@client.CreatedAtUtc.ToShortDateString()</span>
+                </div>
+                <div class="card-actions">
+                    <a href="/clients/@client.Id/invoices" class="btn btn-outline-secondary">Invoices</a>
+                </div>
+            </div>
+        }
+    </div>
 }
 
 @code {

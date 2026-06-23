@@ -8,6 +8,7 @@ public class Invoice
     public Guid WorkspaceId { get; private set; }
     public Guid ClientId { get; private set; }
     public string Number { get; private set; }
+    public string PublicId { get; private set; }
     public DateTime IssueDateUtc { get; private set; }
     public DateTime DueDateUtc { get; private set; }
     public InvoiceStatus Status { get; private set; }
@@ -20,7 +21,7 @@ public class Invoice
     public decimal Subtotal => _lineItems.Sum(li => li.Amount);
     public decimal Total => Subtotal;
 
-    private Invoice() => (Number, Currency) = (null!, null!);
+    private Invoice() => (Number, Currency, PublicId) = (null!, null!, null!);
 
     public Invoice(
         Guid workspaceId,
@@ -38,6 +39,7 @@ public class Invoice
         ArgumentException.ThrowIfNullOrWhiteSpace(currency);
 
         Id = Guid.NewGuid();
+        PublicId = PublicIdGenerator.New();
         WorkspaceId = workspaceId;
         ClientId = clientId;
         Number = number;

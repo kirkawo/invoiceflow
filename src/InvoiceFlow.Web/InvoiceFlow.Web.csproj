@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\InvoiceFlow.Application\InvoiceFlow.Application.csproj" />
     <ProjectReference Include="..\InvoiceFlow.Infrastructure\InvoiceFlow.Infrastructure.csproj" />
+    <ProjectReference Include="..\InvoiceFlow.Pdf\InvoiceFlow.Pdf.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

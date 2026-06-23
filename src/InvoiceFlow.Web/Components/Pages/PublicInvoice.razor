@@ -1,0 +1,149 @@
+@page "/invoices/public/{publicId}"
+@layout BlankLayout
+@attribute [AllowAnonymous]
+@inject PublicInvoiceService PublicInvoiceService
+
+<PageTitle>Invoice @invoice?.Number - InvoiceFlow</PageTitle>
+
+@if (error is not null)
+{
+    <div class="public-invoice-page">
+        <div class="public-invoice-card">
+            <div class="alert alert-danger mb-0">@error</div>
+        </div>
+    </div>
+}
+else if (invoice is null)
+{
+    <div class="public-invoice-page">
+        <div class="public-invoice-card">
+            <p class="text-muted mb-0">Loading...</p>
+        </div>
+    </div>
+}
+else
+{
+    <div class="public-invoice-page">
+        <div class="public-invoice-card">
+
+            @* ── Header: title + number (left), status + dates (right) ── *@
+            <div class="row">
+                <div class="col-7">
+                    <div class="pi-title">INVOICE</div>
+                    <div class="pi-number">#@invoice.Number</div>
+                </div>
+                <div class="col-5">
+                    <div class="pi-header-right">
+                        <span class="badge @StatusClass(invoice.Status) pi-badge">@invoice.Status</span>
+                        <div class="pi-date-line">Issued: @invoice.IssueDateUtc.ToString("MMM dd, yyyy")</div>
+                        <div class="pi-date-line">Due: @invoice.DueDateUtc.ToString("MMM dd, yyyy")</div>
+                    </div>
+                </div>
+            </div>
+
+            <hr class="pi-rule" />
+
+            @* ── Bill To (left) + Currency (right) ── *@
+            <div class="row">
+                <div class="col-md-6 mb-3 mb-md-0">
+                    <div class="pi-label">Bill To</div>
+                    <div class="pi-value">@invoice.ClientName</div>
+                    @if (!string.IsNullOrWhiteSpace(invoice.ClientCompany))
+                    {
+                        <div class="pi-sub">@invoice.ClientCompany</div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(invoice.ClientEmail))
+                    {
+                        <div class="pi-sub">@invoice.ClientEmail</div>
+                    }
+                </div>
+                <div class="col-md-6">
+                    <div class="pi-label text-md-end">Currency</div>
+                    <div class="pi-value text-md-end">@invoice.Currency</div>
+                </div>
+            </div>
+
+            <div class="pi-table-gap"></div>
+
+            @* ── Line items table ── *@
+            <div class="table-responsive">
+                <table class="pi-table">
+                    <thead>
+                        <tr>
+                            <th>Description</th>
+                            <th class="text-end">Qty</th>
+                            <th class="text-end">Unit Price</th>
+                            <th class="text-end">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var line in invoice.LineItems)
+                        {
+                            <tr>
+                                <td>@line.Description</td>
+                                <td class="text-end">@line.Quantity.ToString("0.##")</td>
+                                <td class="text-end">@line.UnitPrice.ToString("F2")</td>
+                                <td class="text-end">@line.Amount.ToString("F2")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <hr class="pi-rule" />
+
+            @* ── Total ── *@
+            <div class="pi-total-row">
+                <span class="pi-total-label">Total</span>
+                <span class="pi-total-value">@invoice.Currency @invoice.Total.ToString("F2")</span>
+            </div>
+
+            @* ── Notes ── *@
+            @if (!string.IsNullOrWhiteSpace(invoice.Notes))
+            {
+                <div class="pi-notes">
+                    <div class="pi-label">Notes</div>
+                    <p class="pi-value mb-0">@invoice.Notes</p>
+                </div>
+            }
+
+            @* ── Footer ── *@
+            <div class="pi-footer">InvoiceFlow</div>
+
+        </div>
+    </div>
+}
+
+@code {
+    private PublicInvoiceDto? invoice;
+    private string? error;
+
+    [Parameter]
+    public string PublicId { get; set; } = string.Empty;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        try
+        {
+            invoice = await PublicInvoiceService.GetPublicInvoiceAsync(PublicId);
+            if (invoice is null)
+            {
+                error = "Invoice not found.";
+            }
+        }
+        catch (Exception)
+        {
+            error = "Invoice not found.";
+        }
+    }
+
+    private static string StatusClass(InvoiceStatus status) => status switch
+    {
+        InvoiceStatus.Draft => "bg-secondary",
+        InvoiceStatus.Issued => "bg-primary",
+        InvoiceStatus.Paid => "bg-success",
+        InvoiceStatus.Overdue => "bg-warning text-dark",
+        InvoiceStatus.Cancelled => "bg-danger",
+        _ => "bg-secondary"
+    };
+}

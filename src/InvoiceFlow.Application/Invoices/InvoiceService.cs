@@ -164,12 +164,18 @@ public class InvoiceService
         await _invoiceRepository.UpdateAsync(invoice, cancellationToken);
     }
 
+    public async Task<Invoice?> LoadInvoiceDomainAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return await _invoiceRepository.GetByIdAsync(id, cancellationToken);
+    }
+
     private static InvoiceDto MapToDto(Invoice invoice) =>
         new()
         {
             Id = invoice.Id,
             ClientId = invoice.ClientId,
             Number = invoice.Number,
+            PublicId = invoice.PublicId,
             IssueDateUtc = invoice.IssueDateUtc,
             DueDateUtc = invoice.DueDateUtc,
             Status = invoice.Status,

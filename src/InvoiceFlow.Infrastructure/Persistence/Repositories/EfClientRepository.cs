@@ -23,6 +23,13 @@ public class EfClientRepository : IClientRepository
             .FirstOrDefaultAsync(c => c.WorkspaceId == workspaceId && c.Id == id, cancellationToken);
     }
 
+    public async Task<Client?> GetByIdUnfilteredAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return await _context.Clients
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
+    }
+
     public async Task AddAsync(Client client, CancellationToken cancellationToken = default)
     {
         await _context.Clients.AddAsync(client, cancellationToken);
