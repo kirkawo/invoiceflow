@@ -11,6 +11,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ClientService>();
         services.AddScoped<InvoiceService>();
         services.AddScoped<PublicInvoiceService>();
+        services.AddScoped<InvoiceStatusSyncService>();
         return services;
     }
 }

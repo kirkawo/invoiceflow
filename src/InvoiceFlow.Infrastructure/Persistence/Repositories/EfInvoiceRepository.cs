@@ -61,6 +61,17 @@ public class EfInvoiceRepository : IInvoiceRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Invoice>> GetOverdueCandidatesAsync(DateTime utcNow, CancellationToken cancellationToken = default)
+    {
+        var workspaceId = _workspaceService.WorkspaceId;
+        return await _context.Invoices
+            .Where(i => i.WorkspaceId == workspaceId
+                && i.Status == InvoiceStatus.Issued
+                && i.DueDateUtc < utcNow)
+            .Include(i => i.LineItems)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<string> GetNextInvoiceNumberAsync(CancellationToken cancellationToken = default)
     {
         var year = DateTime.UtcNow.Year;

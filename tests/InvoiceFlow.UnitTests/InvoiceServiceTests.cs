@@ -311,10 +311,124 @@ public class InvoiceServiceTests
         Assert.Equal(dto.Number, publicDto.Number);
     }
 
-    private async Task<Guid> CreateDraftInvoiceAsync(Guid clientId)
+    #region Overdue sync tests
+
+    [Fact]
+    public async Task SyncOverdueStatus_IssuedInvoiceDueBeforeToday_BecomesOverdue()
+    {
+        var clientId = await CreateClientAsync();
+        var pastDue = new DateTime(2026, 6, 15, 0, 0, 0, DateTimeKind.Utc);
+        var now = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc);
+        var invoiceId = await CreateDraftInvoiceAsync(clientId, pastDue);
+        await _service.AddLineItemAsync(invoiceId, "Item", 1, 100);
+        await _service.IssueInvoiceAsync(invoiceId);
+
+        var syncService = new InvoiceStatusSyncService(_invoiceRepository);
+        var count = await syncService.SyncOverdueStatusAsync(now);
+
+        var invoice = await _invoiceRepository.GetByIdAsync(invoiceId);
+        Assert.Equal(1, count);
+        Assert.NotNull(invoice);
+        Assert.Equal(InvoiceStatus.Overdue, invoice.Status);
+    }
+
+    [Fact]
+    public async Task SyncOverdueStatus_IssuedInvoiceDueToday_StaysIssued()
+    {
+        var clientId = await CreateClientAsync();
+        var invoiceId = await CreateDraftInvoiceAsync(clientId);
+        await _service.AddLineItemAsync(invoiceId, "Item", 1, 100);
+        await _service.IssueInvoiceAsync(invoiceId);
+
+        var syncService = new InvoiceStatusSyncService(_invoiceRepository);
+        var today = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc);
+        var count = await syncService.SyncOverdueStatusAsync(today);
+
+        var invoice = await _invoiceRepository.GetByIdAsync(invoiceId);
+        Assert.Equal(0, count);
+        Assert.NotNull(invoice);
+        Assert.Equal(InvoiceStatus.Issued, invoice.Status);
+    }
+
+    [Fact]
+    public async Task SyncOverdueStatus_PaidInvoice_StaysPaid()
+    {
+        var clientId = await CreateClientAsync();
+        var invoiceId = await CreateDraftInvoiceAsync(clientId);
+        await _service.AddLineItemAsync(invoiceId, "Item", 1, 100);
+        await _service.IssueInvoiceAsync(invoiceId);
+        await _service.MarkInvoicePaidAsync(invoiceId);
+
+        var syncService = new InvoiceStatusSyncService(_invoiceRepository);
+        var future = new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc);
+        var count = await syncService.SyncOverdueStatusAsync(future);
+
+        var invoice = await _invoiceRepository.GetByIdAsync(invoiceId);
+        Assert.Equal(0, count);
+        Assert.NotNull(invoice);
+        Assert.Equal(InvoiceStatus.Paid, invoice.Status);
+    }
+
+    [Fact]
+    public async Task SyncOverdueStatus_CancelledInvoice_StaysCancelled()
+    {
+        var clientId = await CreateClientAsync();
+        var invoiceId = await CreateDraftInvoiceAsync(clientId);
+        await _service.CancelInvoiceAsync(invoiceId);
+
+        var syncService = new InvoiceStatusSyncService(_invoiceRepository);
+        var future = new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc);
+        var count = await syncService.SyncOverdueStatusAsync(future);
+
+        var invoice = await _invoiceRepository.GetByIdAsync(invoiceId);
+        Assert.Equal(0, count);
+        Assert.NotNull(invoice);
+        Assert.Equal(InvoiceStatus.Cancelled, invoice.Status);
+    }
+
+    [Fact]
+    public async Task SyncOverdueStatus_DraftInvoice_StaysDraft()
+    {
+        var clientId = await CreateClientAsync();
+        var invoiceId = await CreateDraftInvoiceAsync(clientId);
+
+        var syncService = new InvoiceStatusSyncService(_invoiceRepository);
+        var future = new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc);
+        var count = await syncService.SyncOverdueStatusAsync(future);
+
+        var invoice = await _invoiceRepository.GetByIdAsync(invoiceId);
+        Assert.Equal(0, count);
+        Assert.NotNull(invoice);
+        Assert.Equal(InvoiceStatus.Draft, invoice.Status);
+    }
+
+    [Fact]
+    public async Task SyncOverdueStatus_Idempotent_RunningTwiceDoesNotBreak()
+    {
+        var clientId = await CreateClientAsync();
+        var pastDue = new DateTime(2026, 6, 15, 0, 0, 0, DateTimeKind.Utc);
+        var now = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc);
+        var invoiceId = await CreateDraftInvoiceAsync(clientId, pastDue);
+        await _service.AddLineItemAsync(invoiceId, "Item", 1, 100);
+        await _service.IssueInvoiceAsync(invoiceId);
+
+        var syncService = new InvoiceStatusSyncService(_invoiceRepository);
+        var count1 = await syncService.SyncOverdueStatusAsync(now);
+        var count2 = await syncService.SyncOverdueStatusAsync(now);
+
+        var invoice = await _invoiceRepository.GetByIdAsync(invoiceId);
+        Assert.Equal(1, count1);
+        Assert.Equal(0, count2);
+        Assert.NotNull(invoice);
+        Assert.Equal(InvoiceStatus.Overdue, invoice.Status);
+    }
+
+    #endregion
+
+    private async Task<Guid> CreateDraftInvoiceAsync(Guid clientId, DateTime? dueDate = null)
     {
         var issueDate = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
-        return await _service.CreateInvoiceDraftAsync(clientId, "INV-001", issueDate, issueDate.AddDays(30), "USD", null);
+        return await _service.CreateInvoiceDraftAsync(clientId, "INV-001", issueDate, dueDate ?? issueDate.AddDays(30), "USD", null);
     }
 }
 
@@ -347,6 +461,13 @@ public class FakeInvoiceRepository : IInvoiceRepository
     public Task<IReadOnlyList<Invoice>> ListAllAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<Invoice>>(
             _store.Values.ToList().AsReadOnly());
+
+    public Task<IReadOnlyList<Invoice>> GetOverdueCandidatesAsync(DateTime utcNow, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<Invoice>>(
+            _store.Values
+                .Where(i => i.Status == InvoiceStatus.Issued && i.DueDateUtc < utcNow)
+                .ToList()
+                .AsReadOnly());
 
     public Task<string> GetNextInvoiceNumberAsync(CancellationToken cancellationToken = default)
     {
