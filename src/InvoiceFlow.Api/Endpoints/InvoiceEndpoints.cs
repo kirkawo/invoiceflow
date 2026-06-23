@@ -156,6 +156,9 @@ public static class InvoiceEndpoints
             if (invoice is null)
                 return Results.NotFound();
 
+            if (invoice.LineItems.Count == 0)
+                return Results.BadRequest(new { error = "Cannot generate PDF for an invoice without line items." });
+
             var pdf = pdfService.GeneratePdf(invoice);
             return Results.File(pdf, "application/pdf", $"invoice-{invoiceDto.Number}.pdf");
         });

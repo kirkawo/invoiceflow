@@ -26,6 +26,9 @@ public class PublicInvoiceService
         if (invoice.Status is InvoiceStatus.Draft or InvoiceStatus.Cancelled)
             return null;
 
+        if (invoice.LineItems.Count == 0)
+            return null;
+
         var client = await _clientRepository.GetByIdUnfilteredAsync(invoice.ClientId, cancellationToken);
 
         return new PublicInvoiceDto
@@ -64,6 +67,9 @@ public class PublicInvoiceService
             return null;
 
         if (invoice.Status is InvoiceStatus.Draft or InvoiceStatus.Cancelled)
+            return null;
+
+        if (invoice.LineItems.Count == 0)
             return null;
 
         return invoice;
