@@ -68,7 +68,6 @@ public class EfInvoiceRepository : IInvoiceRepository
             .Where(i => i.WorkspaceId == workspaceId
                 && i.Status == InvoiceStatus.Issued
                 && i.DueDateUtc < utcNow)
-            .Include(i => i.LineItems)
             .ToListAsync(cancellationToken);
     }
 

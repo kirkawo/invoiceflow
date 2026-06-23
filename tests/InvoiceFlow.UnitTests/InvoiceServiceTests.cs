@@ -13,9 +13,9 @@ public class InvoiceServiceTests
 
     public InvoiceServiceTests()
     {
-        _invoiceRepository = new FakeInvoiceRepository();
+        _invoiceRepository = new FakeInvoiceRepository { FilterWorkspaceId = TestWorkspaceId };
         _clientRepository = new FakeClientRepository();
-        _service = new InvoiceService(_invoiceRepository, _clientRepository, new FakeCurrentWorkspaceService());
+        _service = new InvoiceService(_invoiceRepository, _clientRepository, new FakeCurrentWorkspaceService { WorkspaceId = TestWorkspaceId });
     }
 
     private async Task<Guid> CreateClientAsync(string name = "Client")
@@ -423,6 +423,37 @@ public class InvoiceServiceTests
         Assert.Equal(InvoiceStatus.Overdue, invoice.Status);
     }
 
+    [Fact]
+    public async Task SyncOverdueStatus_RespectsWorkspaceIsolation()
+    {
+        var clientId = await CreateClientAsync();
+        var pastDue = new DateTime(2026, 6, 15, 0, 0, 0, DateTimeKind.Utc);
+        var now = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        var invoiceId = await CreateDraftInvoiceAsync(clientId, pastDue);
+        await _service.AddLineItemAsync(invoiceId, "Item", 1, 100);
+        await _service.IssueInvoiceAsync(invoiceId);
+
+        var otherWsId = Guid.NewGuid();
+        var otherInvoice = new Invoice(otherWsId, clientId, "INV-OTHER", new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc), pastDue, "USD");
+        otherInvoice.AddLineItem("Item", 1, 100);
+        otherInvoice.Issue();
+        await _invoiceRepository.AddAsync(otherInvoice);
+
+        var syncService = new InvoiceStatusSyncService(_invoiceRepository);
+        var count = await syncService.SyncOverdueStatusAsync(now);
+
+        Assert.Equal(1, count);
+
+        var syncedInvoice = await _invoiceRepository.GetByIdAsync(invoiceId);
+        Assert.NotNull(syncedInvoice);
+        Assert.Equal(InvoiceStatus.Overdue, syncedInvoice.Status);
+
+        var otherInDb = await _invoiceRepository.GetByIdAsync(otherInvoice.Id);
+        Assert.NotNull(otherInDb);
+        Assert.Equal(InvoiceStatus.Issued, otherInDb.Status);
+    }
+
     #endregion
 
     private async Task<Guid> CreateDraftInvoiceAsync(Guid clientId, DateTime? dueDate = null)
@@ -435,6 +466,7 @@ public class InvoiceServiceTests
 public class FakeInvoiceRepository : IInvoiceRepository
 {
     private readonly Dictionary<Guid, Invoice> _store = [];
+    public Guid? FilterWorkspaceId { get; set; }
 
     public Task<Invoice?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         Task.FromResult(_store.TryGetValue(id, out var invoice) ? invoice : null);
@@ -462,12 +494,16 @@ public class FakeInvoiceRepository : IInvoiceRepository
         Task.FromResult<IReadOnlyList<Invoice>>(
             _store.Values.ToList().AsReadOnly());
 
-    public Task<IReadOnlyList<Invoice>> GetOverdueCandidatesAsync(DateTime utcNow, CancellationToken cancellationToken = default) =>
-        Task.FromResult<IReadOnlyList<Invoice>>(
-            _store.Values
-                .Where(i => i.Status == InvoiceStatus.Issued && i.DueDateUtc < utcNow)
+    public Task<IReadOnlyList<Invoice>> GetOverdueCandidatesAsync(DateTime utcNow, CancellationToken cancellationToken = default)
+    {
+        var query = _store.Values.AsEnumerable();
+        if (FilterWorkspaceId.HasValue)
+            query = query.Where(i => i.WorkspaceId == FilterWorkspaceId.Value);
+        return Task.FromResult<IReadOnlyList<Invoice>>(
+            query.Where(i => i.Status == InvoiceStatus.Issued && i.DueDateUtc < utcNow)
                 .ToList()
                 .AsReadOnly());
+    }
 
     public Task<string> GetNextInvoiceNumberAsync(CancellationToken cancellationToken = default)
     {
