@@ -65,6 +65,10 @@ else
                 <div class="col-md-4">
                     <div class="text-muted small text-uppercase fw-semibold mb-1">Due Date</div>
                     <div>@invoice.DueDateUtc.ToShortDateString()</div>
+                    @if (DueWarningHelper.GetDueWarning(invoice.Status, invoice.DueDateUtc) is { } warning)
+                    {
+                        <div><span class="@warning.CssClass" style="font-size:0.85rem;">@warning.Text</span></div>
+                    }
                 </div>
             </div>
             <div class="row g-3 mt-1">
