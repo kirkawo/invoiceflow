@@ -19,7 +19,39 @@ public static class InvoiceFlowSampleDataSeeder
         "Data migration",
     ];
 
-    public static async Task SeedAsync(InvoiceFlowDbContext context, bool refresh = false)
+    private static readonly (string Name, string Email, string? Company)[][] ClientBatches =
+    [
+        [
+            ("Acme Corp", "billing@acme.com", "Acme Corporation"),
+            ("Globex Inc", "ar@globex.com", "Globex Industries"),
+            ("Initech", "finance@initech.com", (string?)null),
+            ("Umbrella Co", "payments@umbrella.com", "Umbrella Corporation"),
+            ("Hooli", "accounting@hooli.com", "Hooli Technologies"),
+            ("Stark Industries", "invoices@stark.com", "Stark Industries"),
+            ("Wayne Enterprises", "finance@wayne.com", "Wayne Enterprises"),
+            ("Cyberdyne Systems", "billing@cyberdyne.com", "Cyberdyne Systems"),
+            ("Oscorp", "ar@oscorp.com", "Oscorp Inc"),
+            ("Massive Dynamic", "payables@massive.com", "Massive Dynamic"),
+            ("Soylent Corp", "billing@soylent.com", "Soylent Corporation"),
+            ("Wonka Industries", "finance@wonka.com", "Wonka Industries"),
+        ],
+        [
+            ("Pied Piper", "billing@piedpiper.com", (string?)null),
+            ("Dunder Mifflin", "accounting@dundermifflin.com", (string?)null),
+            ("Sterling Cooper Draper Pryce", "finance@scdp.com", (string?)null),
+            ("Weyland-Yutani", "billing@weyland.com", "Weyland-Yutani Corp"),
+            ("Tyrell Corporation", "invoices@tyrell.com", "Tyrell Corporation"),
+            ("Buy n Large", "ar@bnl.com", "Buy n Large Inc"),
+            ("Oceanic Airlines", "billing@oceanic-air.com", (string?)null),
+            ("Aperture Science", "invoices@aperture.com", "Aperture Science Inc"),
+            ("Black Mesa Research", "finance@blackmesa.com", "Black Mesa Research"),
+            ("Dharma Initiative", "billing@dharma.org", "Dharma Initiative"),
+            ("Solyent Green", "payables@solyent.com", (string?)null),
+            ("Vaught Industries", "accounting@vaught.com", "Vaught Industries"),
+        ],
+    ];
+
+    public static async Task SeedAsync(InvoiceFlowDbContext context, bool refresh = false, bool append = false)
     {
         var workspace = await context.Workspaces.FirstOrDefaultAsync(w => w.Name == "Default");
         if (workspace is null)
@@ -33,17 +65,63 @@ public static class InvoiceFlowSampleDataSeeder
 
         if (hasExistingData)
         {
-            if (!refresh)
-                return;
+            if (refresh)
+            {
+                await ClearWorkspaceDataAsync(context, workspace.Id);
+            }
+            else if (append)
+            {
+                var nextBatch = await DetermineNextBatchAsync(context, workspace.Id);
+                if (nextBatch < 0)
+                    return;
 
-            await ClearWorkspaceDataAsync(context, workspace.Id);
+                await SeedBatchAsync(context, workspace.Id, nextBatch);
+                return;
+            }
+            else
+            {
+                return;
+            }
         }
 
-        var rng = new Random(42);
-        var today = DateTime.UtcNow.Date;
+        await SeedBatchAsync(context, workspace.Id, 0);
+    }
 
-        var clients = await CreateClientsAsync(context, workspace.Id);
-        await CreateInvoicesAsync(context, workspace.Id, clients, rng, today);
+    private static async Task SeedBatchAsync(InvoiceFlowDbContext context, Guid workspaceId, int batchIndex)
+    {
+        var rng = new Random(42 * (batchIndex + 1));
+        var today = DateTime.UtcNow.Date;
+        var startingInvoiceNumber = await GetMaxInvoiceSequenceAsync(context, workspaceId, today.Year);
+
+        var clients = await CreateClientsForBatchAsync(context, workspaceId, batchIndex);
+        await CreateInvoicesAsync(context, workspaceId, clients, rng, today, startingInvoiceNumber);
+    }
+
+    private static async Task<int> DetermineNextBatchAsync(InvoiceFlowDbContext context, Guid workspaceId)
+    {
+        for (var batch = 1; batch < ClientBatches.Length; batch++)
+        {
+            var firstName = ClientBatches[batch][0].Name;
+            var exists = await context.Clients.AnyAsync(c => c.WorkspaceId == workspaceId && c.Name == firstName);
+            if (!exists)
+                return batch;
+        }
+
+        return -1;
+    }
+
+    private static async Task<int> GetMaxInvoiceSequenceAsync(InvoiceFlowDbContext context, Guid workspaceId, int year)
+    {
+        var prefix = $"INV-{year}-";
+        var existingNumbers = await context.Invoices
+            .Where(i => i.WorkspaceId == workspaceId && i.Number.StartsWith(prefix))
+            .Select(i => i.Number)
+            .ToListAsync();
+
+        return existingNumbers
+            .Select(n => int.TryParse(n[prefix.Length..], out var s) ? s : 0)
+            .DefaultIfEmpty(0)
+            .Max();
     }
 
     private static async Task ClearWorkspaceDataAsync(InvoiceFlowDbContext context, Guid workspaceId)
@@ -63,25 +141,11 @@ public static class InvoiceFlowSampleDataSeeder
         await context.SaveChangesAsync();
     }
 
-    private static async Task<List<Client>> CreateClientsAsync(InvoiceFlowDbContext context, Guid workspaceId)
+    private static async Task<List<Client>> CreateClientsForBatchAsync(InvoiceFlowDbContext context, Guid workspaceId, int batchIndex)
     {
-        var clientData = new[]
-        {
-            ("Acme Corp", "billing@acme.com", "Acme Corporation"),
-            ("Globex Inc", "ar@globex.com", "Globex Industries"),
-            ("Initech", "finance@initech.com", (string?)null),
-            ("Umbrella Co", "payments@umbrella.com", "Umbrella Corporation"),
-            ("Hooli", "accounting@hooli.com", "Hooli Technologies"),
-            ("Stark Industries", "invoices@stark.com", "Stark Industries"),
-            ("Wayne Enterprises", "finance@wayne.com", "Wayne Enterprises"),
-            ("Cyberdyne Systems", "billing@cyberdyne.com", "Cyberdyne Systems"),
-            ("Oscorp", "ar@oscorp.com", "Oscorp Inc"),
-            ("Massive Dynamic", "payables@massive.com", "Massive Dynamic"),
-            ("Soylent Corp", "billing@soylent.com", "Soylent Corporation"),
-            ("Wonka Industries", "finance@wonka.com", "Wonka Industries"),
-        };
-
+        var clientData = ClientBatches[batchIndex];
         var clients = new List<Client>(clientData.Length);
+
         foreach (var (name, email, company) in clientData)
         {
             clients.Add(new Client(workspaceId, name, email, company));
@@ -97,9 +161,10 @@ public static class InvoiceFlowSampleDataSeeder
         Guid workspaceId,
         List<Client> clients,
         Random rng,
-        DateTime today)
+        DateTime today,
+        int startingInvoiceNumber)
     {
-        var invoiceNumber = 0;
+        var invoiceNumber = startingInvoiceNumber;
 
         foreach (var client in clients)
         {

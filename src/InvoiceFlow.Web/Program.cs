@@ -53,7 +53,8 @@ if (app.Environment.IsDevelopment())
         if (config.GetValue<bool>("SampleData:Enabled"))
         {
             var refresh = config.GetValue<bool>("SampleData:RefreshOnStartup");
-            await InvoiceFlowSampleDataSeeder.SeedAsync(context, refresh);
+            var append = !refresh && config.GetValue<bool>("SampleData:AppendOnStartup");
+            await InvoiceFlowSampleDataSeeder.SeedAsync(context, refresh, append);
         }
     }
 }
