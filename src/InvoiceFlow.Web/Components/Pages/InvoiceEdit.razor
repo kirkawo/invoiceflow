@@ -65,7 +65,7 @@ else
                 <div class="col-md-4">
                     <div class="text-muted small text-uppercase fw-semibold mb-1">Due Date</div>
                     <div>@invoice.DueDateUtc.ToShortDateString()</div>
-                    @if (DueWarningHelper.GetDueWarning(invoice.Status, invoice.DueDateUtc) is { } warning)
+                    @if (DueWarningHelper.GetDueWarning(invoice.Status, invoice.DueDateUtc, _today) is { } warning)
                     {
                         <div><span class="@warning.CssClass" style="font-size:0.85rem;">@warning.Text</span></div>
                     }
@@ -391,6 +391,8 @@ else
         copied = true;
         _ = Task.Delay(3000).ContinueWith(_ => InvokeAsync(() => copied = false));
     }
+
+    private DateOnly _today => DateOnly.FromDateTime(DateTime.UtcNow);
 
     private static string StatusClass(InvoiceStatus status) => status switch
     {

@@ -6,11 +6,10 @@ public record DueWarningInfo(string Text, string CssClass);
 
 public static class DueWarningHelper
 {
-    public static DueWarningInfo? GetDueWarning(InvoiceStatus status, DateTime dueDateUtc)
+    public static DueWarningInfo? GetDueWarning(InvoiceStatus status, DateTime dueDateUtc, DateOnly today)
     {
-        var today = DateTime.UtcNow.Date;
-        var dueDate = dueDateUtc.Date;
-        var daysUntilDue = (dueDate - today).Days;
+        var dueDate = DateOnly.FromDateTime(dueDateUtc);
+        var daysUntilDue = dueDate.DayNumber - today.DayNumber;
 
         if (status == InvoiceStatus.Issued)
         {

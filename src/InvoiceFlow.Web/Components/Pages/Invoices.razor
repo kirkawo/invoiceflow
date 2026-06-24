@@ -79,7 +79,7 @@ else
                         <td>@invoice.Total.ToString("F2")</td>
                         <td>
                             @invoice.DueDateUtc.ToShortDateString()
-                            @if (DueWarningHelper.GetDueWarning(invoice.Status, invoice.DueDateUtc) is { } warning)
+                            @if (DueWarningHelper.GetDueWarning(invoice.Status, invoice.DueDateUtc, _today) is { } warning)
                             {
                                 <br /><span class="@warning.CssClass" style="font-size:0.8rem;white-space:nowrap;">@warning.Text</span>
                             }
@@ -125,7 +125,7 @@ else
                     <span class="card-label">Due</span>
                     <span class="card-value">
                         @invoice.DueDateUtc.ToShortDateString()
-                        @if (DueWarningHelper.GetDueWarning(invoice.Status, invoice.DueDateUtc) is { } warning)
+                        @if (DueWarningHelper.GetDueWarning(invoice.Status, invoice.DueDateUtc, _today) is { } warning)
                         {
                             <br /><span class="@warning.CssClass" style="font-size:0.75rem;">@warning.Text</span>
                         }
@@ -213,6 +213,8 @@ else
         selectedStatus = "";
         await LoadInvoicesAsync();
     }
+
+    private DateOnly _today => DateOnly.FromDateTime(DateTime.UtcNow);
 
     private static string StatusClass(InvoiceStatus status) => status switch
     {
