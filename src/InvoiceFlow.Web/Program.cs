@@ -48,7 +48,13 @@ if (app.Environment.IsDevelopment())
     using (var scope = app.Services.CreateScope())
     {
         var context = scope.ServiceProvider.GetRequiredService<InvoiceFlowDbContext>();
-        await InvoiceFlowSampleDataSeeder.SeedAsync(context);
+        var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+
+        if (config.GetValue<bool>("SampleData:Enabled"))
+        {
+            var refresh = config.GetValue<bool>("SampleData:RefreshOnStartup");
+            await InvoiceFlowSampleDataSeeder.SeedAsync(context, refresh);
+        }
     }
 }
 

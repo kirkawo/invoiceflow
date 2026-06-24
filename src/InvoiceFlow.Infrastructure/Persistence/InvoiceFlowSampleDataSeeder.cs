@@ -19,7 +19,7 @@ public static class InvoiceFlowSampleDataSeeder
         "Data migration",
     ];
 
-    public static async Task SeedAsync(InvoiceFlowDbContext context)
+    public static async Task SeedAsync(InvoiceFlowDbContext context, bool refresh = false)
     {
         var workspace = await context.Workspaces.FirstOrDefaultAsync(w => w.Name == "Default");
         if (workspace is null)
@@ -29,14 +29,38 @@ public static class InvoiceFlowSampleDataSeeder
             await context.SaveChangesAsync();
         }
 
-        if (await context.Clients.AnyAsync(c => c.WorkspaceId == workspace.Id))
-            return;
+        var hasExistingData = await context.Clients.AnyAsync(c => c.WorkspaceId == workspace.Id);
+
+        if (hasExistingData)
+        {
+            if (!refresh)
+                return;
+
+            await ClearWorkspaceDataAsync(context, workspace.Id);
+        }
 
         var rng = new Random(42);
         var today = DateTime.UtcNow.Date;
 
         var clients = await CreateClientsAsync(context, workspace.Id);
         await CreateInvoicesAsync(context, workspace.Id, clients, rng, today);
+    }
+
+    private static async Task ClearWorkspaceDataAsync(InvoiceFlowDbContext context, Guid workspaceId)
+    {
+        var invoices = await context.Invoices
+            .Where(i => i.WorkspaceId == workspaceId)
+            .ToListAsync();
+
+        context.Invoices.RemoveRange(invoices);
+        await context.SaveChangesAsync();
+
+        var clients = await context.Clients
+            .Where(c => c.WorkspaceId == workspaceId)
+            .ToListAsync();
+
+        context.Clients.RemoveRange(clients);
+        await context.SaveChangesAsync();
     }
 
     private static async Task<List<Client>> CreateClientsAsync(InvoiceFlowDbContext context, Guid workspaceId)
