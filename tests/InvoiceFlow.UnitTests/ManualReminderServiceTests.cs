@@ -17,7 +17,7 @@ public class ManualReminderServiceTests
     {
         _invoiceRepository = new FakeInvoiceRepository { FilterWorkspaceId = TestWorkspaceId };
         _clientRepository = new FakeClientRepository();
-        _reminderRepository = new FakeReminderRepository();
+        _reminderRepository = new FakeReminderRepository { FilterWorkspaceId = TestWorkspaceId };
         _emailSender = new FakeEmailSender();
         _service = new ManualReminderService(
             _invoiceRepository,
@@ -144,17 +144,8 @@ public class ManualReminderServiceTests
         otherInvoice.MarkOverdue();
         await _invoiceRepository.AddAsync(otherInvoice);
 
-        var wsFilteredRepo = new WorkspaceFilteredInvoiceRepo(_invoiceRepository, TestWorkspaceId);
-
-        var filteredService = new ManualReminderService(
-            wsFilteredRepo,
-            _clientRepository,
-            _reminderRepository,
-            new FakeCurrentWorkspaceService { WorkspaceId = TestWorkspaceId },
-            _emailSender);
-
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            filteredService.SendManualReminderAsync(otherInvoice.Id));
+            _service.SendManualReminderAsync(otherInvoice.Id));
     }
 
     [Fact]
@@ -186,6 +177,24 @@ public class ManualReminderServiceTests
         Assert.Equal(2, history.Count);
         Assert.Equal(r2.Id, history[0].Id);
         Assert.Equal(r1.Id, history[1].Id);
+    }
+
+    [Fact]
+    public async Task GetReminderHistoryAsync_OnlyReturnsRemindersInCurrentWorkspace()
+    {
+        var (invoiceId, _) = await CreateOverdueInvoiceAsync("ws1@example.com");
+
+        await _service.SendManualReminderAsync(invoiceId);
+
+        var otherWsReminder = new Reminder(
+            Guid.NewGuid(), invoiceId, ReminderType.ManualOverdue, ReminderChannel.Email,
+            "other@example.com", "Other Subject", ReminderStatus.Sent);
+        await _reminderRepository.AddAsync(otherWsReminder);
+
+        var history = await _service.GetReminderHistoryAsync(invoiceId);
+
+        Assert.Single(history);
+        Assert.Equal("ws1@example.com", history[0].RecipientEmail);
     }
 
     [Fact]
@@ -251,15 +260,21 @@ public class FakeReminderRepository : IReminderRepository
 {
     private readonly List<Reminder> _store = [];
 
+    public Guid? FilterWorkspaceId { get; set; }
+
     public Task AddAsync(Reminder reminder, CancellationToken cancellationToken = default)
     {
         _store.Add(reminder);
         return Task.CompletedTask;
     }
 
-    public Task<IReadOnlyList<Reminder>> ListByInvoiceAsync(Guid invoiceId, CancellationToken cancellationToken = default) =>
-        Task.FromResult<IReadOnlyList<Reminder>>(
-            _store.Where(r => r.InvoiceId == invoiceId).ToList().AsReadOnly());
+    public Task<IReadOnlyList<Reminder>> ListByInvoiceAsync(Guid invoiceId, CancellationToken cancellationToken = default)
+    {
+        var query = _store.Where(r => r.InvoiceId == invoiceId);
+        if (FilterWorkspaceId.HasValue)
+            query = query.Where(r => r.WorkspaceId == FilterWorkspaceId.Value);
+        return Task.FromResult<IReadOnlyList<Reminder>>(query.ToList().AsReadOnly());
+    }
 }
 
 public class FakeEmailSender : IEmailSender
@@ -334,41 +349,4 @@ public class ClientEmptyEmailRepo : IClientRepository
         await _inner.ListAsync(cancellationToken);
 }
 
-public class WorkspaceFilteredInvoiceRepo : IInvoiceRepository
-{
-    private readonly IInvoiceRepository _inner;
-    private readonly Guid _workspaceId;
 
-    public WorkspaceFilteredInvoiceRepo(IInvoiceRepository inner, Guid workspaceId)
-    {
-        _inner = inner;
-        _workspaceId = workspaceId;
-    }
-
-    public async Task<Invoice?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
-    {
-        var invoice = await _inner.GetByIdAsync(id, cancellationToken);
-        return invoice?.WorkspaceId == _workspaceId ? invoice : null;
-    }
-
-    public Task<Invoice?> GetByPublicIdAsync(string publicId, CancellationToken cancellationToken = default) =>
-        _inner.GetByPublicIdAsync(publicId, cancellationToken);
-
-    public Task AddAsync(Invoice invoice, CancellationToken cancellationToken = default) =>
-        _inner.AddAsync(invoice, cancellationToken);
-
-    public Task UpdateAsync(Invoice invoice, CancellationToken cancellationToken = default) =>
-        _inner.UpdateAsync(invoice, cancellationToken);
-
-    public Task<IReadOnlyList<Invoice>> ListByClientAsync(Guid clientId, CancellationToken cancellationToken = default) =>
-        _inner.ListByClientAsync(clientId, cancellationToken);
-
-    public Task<IReadOnlyList<Invoice>> ListAllAsync(CancellationToken cancellationToken = default) =>
-        _inner.ListAllAsync(cancellationToken);
-
-    public Task<IReadOnlyList<Invoice>> GetOverdueCandidatesAsync(DateTime utcNow, CancellationToken cancellationToken = default) =>
-        _inner.GetOverdueCandidatesAsync(utcNow, cancellationToken);
-
-    public Task<string> GetNextInvoiceNumberAsync(CancellationToken cancellationToken = default) =>
-        _inner.GetNextInvoiceNumberAsync(cancellationToken);
-}

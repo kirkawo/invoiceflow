@@ -32,6 +32,9 @@ public class ManualReminderService
         var invoice = await _invoiceRepository.GetByIdAsync(invoiceId, cancellationToken)
             ?? throw new InvalidOperationException($"Invoice with ID '{invoiceId}' not found.");
 
+        if (invoice.WorkspaceId != _workspaceService.WorkspaceId)
+            throw new InvalidOperationException($"Invoice with ID '{invoiceId}' not found.");
+
         if (invoice.Status != InvoiceStatus.Overdue)
             throw new InvalidOperationException("Manual reminders can only be sent for overdue invoices.");
 
@@ -67,6 +70,7 @@ public class ManualReminderService
     {
         var reminders = await _reminderRepository.ListByInvoiceAsync(invoiceId, cancellationToken);
         return reminders
+            .Where(r => r.WorkspaceId == _workspaceService.WorkspaceId)
             .OrderByDescending(r => r.CreatedAtUtc)
             .Select(MapToDto)
             .ToList()
