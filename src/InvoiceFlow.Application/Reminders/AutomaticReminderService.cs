@@ -9,17 +9,20 @@ public class AutomaticReminderService
     private readonly IReminderRepository _reminderRepository;
     private readonly IClientRepository _clientRepository;
     private readonly IEmailSender _emailSender;
+    private readonly ICurrentWorkspaceService _currentWorkspaceService;
 
     public AutomaticReminderService(
         IInvoiceRepository invoiceRepository,
         IReminderRepository reminderRepository,
         IClientRepository clientRepository,
-        IEmailSender emailSender)
+        IEmailSender emailSender,
+        ICurrentWorkspaceService currentWorkspaceService)
     {
         _invoiceRepository = invoiceRepository;
         _reminderRepository = reminderRepository;
         _clientRepository = clientRepository;
         _emailSender = emailSender;
+        _currentWorkspaceService = currentWorkspaceService;
     }
 
     public async Task<int> SendAutoRemindersAsync(
@@ -46,6 +49,9 @@ public class AutomaticReminderService
         DateTime utcNow,
         CancellationToken cancellationToken)
     {
+        if (invoice.WorkspaceId != _currentWorkspaceService.WorkspaceId)
+            return false;
+
         var client = await _clientRepository.GetByIdAsync(invoice.ClientId, cancellationToken);
         if (client is null || string.IsNullOrWhiteSpace(client.Email))
             return false;

@@ -12,6 +12,7 @@ public class AutomaticReminderServiceTests
     private readonly FakeClientRepository _clientRepository;
     private readonly FakeReminderRepository _reminderRepository;
     private readonly FakeEmailSender _emailSender;
+    private readonly FakeCurrentWorkspaceService _currentWorkspaceService;
 
     public AutomaticReminderServiceTests()
     {
@@ -19,11 +20,13 @@ public class AutomaticReminderServiceTests
         _clientRepository = new FakeClientRepository();
         _reminderRepository = new FakeReminderRepository { FilterWorkspaceId = TestWorkspaceId };
         _emailSender = new FakeEmailSender();
+        _currentWorkspaceService = new FakeCurrentWorkspaceService { WorkspaceId = TestWorkspaceId };
         _service = new AutomaticReminderService(
             _invoiceRepository,
             _reminderRepository,
             _clientRepository,
-            _emailSender);
+            _emailSender,
+            _currentWorkspaceService);
     }
 
     private async Task<Guid> CreateClientAsync(string email = "client@example.com")
@@ -153,7 +156,7 @@ public class AutomaticReminderServiceTests
         // Wipe client email via wrapped repo
         var clientRepoNoEmail = new ClientNoEmailRepo(_clientRepository, clientId);
         var service = new AutomaticReminderService(
-            _invoiceRepository, _reminderRepository, clientRepoNoEmail, _emailSender);
+            _invoiceRepository, _reminderRepository, clientRepoNoEmail, _emailSender, _currentWorkspaceService);
 
         var count = await service.SendAutoRemindersAsync(now);
 
@@ -184,15 +187,15 @@ public class AutomaticReminderServiceTests
     public async Task MultipleRuns_Idempotent_NoDuplicateAutoReminders()
     {
         var clientId = await CreateClientAsync();
-        var now = DateTime.UtcNow;
-        var dueDate = now.Date.AddDays(-5);
-        await CreateOverdueInvoiceAsync(clientId, dueDate);
+        var now = new DateTime(2026, 7, 10, 12, 0, 0, DateTimeKind.Utc);
+        var dueDate = new DateTime(2026, 7, 5, 0, 0, 0, DateTimeKind.Utc);
+        var invoiceId = await CreateOverdueInvoiceAsync(clientId, dueDate);
+        // Simulate first run outcome so timestamps are deterministic
+        await AddAutoReminderAsync(invoiceId, now);
 
-        var run1 = await _service.SendAutoRemindersAsync(now);
-        var run2 = await _service.SendAutoRemindersAsync(now);
+        var count = await _service.SendAutoRemindersAsync(now);
 
-        Assert.Equal(1, run1);
-        Assert.Equal(0, run2);
+        Assert.Equal(0, count);
         Assert.Single(_reminderRepository.All.Where(r => r.Type == ReminderType.AutomaticOverdue));
     }
 
@@ -221,7 +224,7 @@ public class AutomaticReminderServiceTests
     // --- Workspace isolation ---
 
     [Fact]
-    public async Task OverdueInvoice_DifferentWorkspace_CreatesNoReminderInTestWorkspace()
+    public async Task OverdueInvoice_DifferentWorkspace_GuardSkipsInvoice()
     {
         var otherWsId = Guid.NewGuid();
         var clientId = await CreateClientAsync("other@example.com");
@@ -235,9 +238,20 @@ public class AutomaticReminderServiceTests
 
         var count = await _service.SendAutoRemindersAsync(now);
 
-        var ourReminders = _reminderRepository.All
-            .Where(r => r.WorkspaceId == TestWorkspaceId)
-            .ToList();
-        Assert.Empty(ourReminders);
+        Assert.Equal(0, count);
+        Assert.Empty(_reminderRepository.All.Where(r => r.WorkspaceId == TestWorkspaceId));
+    }
+
+    [Fact]
+    public async Task OverdueInvoice_InCurrentWorkspace_GuardAllowsProcessing()
+    {
+        var clientId = await CreateClientAsync();
+        var now = new DateTime(2026, 7, 10, 12, 0, 0, DateTimeKind.Utc);
+        var dueDate = new DateTime(2026, 7, 5, 0, 0, 0, DateTimeKind.Utc);
+        await CreateOverdueInvoiceAsync(clientId, dueDate);
+
+        var count = await _service.SendAutoRemindersAsync(now);
+
+        Assert.Equal(1, count);
     }
 }
