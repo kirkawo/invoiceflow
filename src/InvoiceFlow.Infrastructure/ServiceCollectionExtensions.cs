@@ -1,4 +1,5 @@
 using InvoiceFlow.Application.Abstractions;
+using InvoiceFlow.Infrastructure.BackgroundJobs;
 using InvoiceFlow.Infrastructure.Email;
 using InvoiceFlow.Infrastructure.Persistence;
 using InvoiceFlow.Infrastructure.Persistence.Repositories;
@@ -24,6 +25,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IInvoiceRepository, EfInvoiceRepository>();
         services.AddScoped<IReminderRepository, EfReminderRepository>();
         services.AddScoped<IEmailSender, ConsoleEmailSender>();
+        services.AddHostedService<AutomaticReminderBackgroundService>();
 
         return services;
     }

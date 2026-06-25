@@ -1,6 +1,6 @@
 namespace InvoiceFlow.Domain;
 
-public enum ReminderType { ManualOverdue }
+public enum ReminderType { ManualOverdue, AutomaticOverdue }
 
 public enum ReminderChannel { Email }
 

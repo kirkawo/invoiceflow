@@ -14,6 +14,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<PublicInvoiceService>();
         services.AddScoped<InvoiceStatusSyncService>();
         services.AddScoped<ManualReminderService>();
+        services.AddScoped<AutomaticReminderService>();
         return services;
     }
 }

@@ -258,19 +258,19 @@ public class ManualReminderServiceTests
 
 public class FakeReminderRepository : IReminderRepository
 {
-    private readonly List<Reminder> _store = [];
+    public List<Reminder> All { get; } = [];
 
     public Guid? FilterWorkspaceId { get; set; }
 
     public Task AddAsync(Reminder reminder, CancellationToken cancellationToken = default)
     {
-        _store.Add(reminder);
+        All.Add(reminder);
         return Task.CompletedTask;
     }
 
     public Task<IReadOnlyList<Reminder>> ListByInvoiceAsync(Guid invoiceId, CancellationToken cancellationToken = default)
     {
-        var query = _store.Where(r => r.InvoiceId == invoiceId);
+        var query = All.Where(r => r.InvoiceId == invoiceId);
         if (FilterWorkspaceId.HasValue)
             query = query.Where(r => r.WorkspaceId == FilterWorkspaceId.Value);
         return Task.FromResult<IReadOnlyList<Reminder>>(query.ToList().AsReadOnly());
