@@ -24,8 +24,16 @@ public class ApiWebApplicationFactory : WebApplicationFactory<Program>
             var workspaceService = services.SingleOrDefault(d => d.ServiceType == typeof(ICurrentWorkspaceService));
             if (workspaceService is not null) services.Remove(workspaceService);
 
+            var reminderRepo = services.SingleOrDefault(d => d.ServiceType == typeof(IReminderRepository));
+            if (reminderRepo is not null) services.Remove(reminderRepo);
+
+            var emailSender = services.SingleOrDefault(d => d.ServiceType == typeof(IEmailSender));
+            if (emailSender is not null) services.Remove(emailSender);
+
             services.AddSingleton<IClientRepository, InMemoryClientRepository>();
             services.AddSingleton<IInvoiceRepository, InMemoryInvoiceRepository>();
+            services.AddSingleton<IReminderRepository, InMemoryReminderRepository>();
+            services.AddSingleton<IEmailSender>(new FakeEmailSender());
             services.AddSingleton<ICurrentWorkspaceService>(new FakeCurrentWorkspaceService());
 
             services.Configure<AuthenticationOptions>(options =>
@@ -44,4 +52,10 @@ public class ApiWebApplicationFactory : WebApplicationFactory<Program>
 public class FakeCurrentWorkspaceService : ICurrentWorkspaceService
 {
     public Guid WorkspaceId => new("11111111-1111-1111-1111-111111111111");
+}
+
+public class FakeEmailSender : IEmailSender
+{
+    public Task<bool> TrySendAsync(string to, string subject, string body, CancellationToken cancellationToken = default)
+        => Task.FromResult(true);
 }

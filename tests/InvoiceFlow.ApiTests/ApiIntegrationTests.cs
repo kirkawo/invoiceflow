@@ -357,6 +357,95 @@ public class ApiIntegrationTests
     }
 
     [Fact]
+    public async Task PostManualReminder_OverdueInvoice_Returns201()
+    {
+        using var client = CreateClient();
+        var (clientId, invoiceId) = await CreateOverdueInvoiceAsync(client);
+
+        var response = await client.PostAsync($"/api/invoices/{invoiceId}/reminders/manual", null);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var remindersResponse = await client.GetAsync($"/api/invoices/{invoiceId}/reminders");
+        var reminders = await remindersResponse.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Single(reminders.EnumerateArray());
+        Assert.Equal("Sent", reminders[0].GetProperty("status").GetString());
+        Assert.Equal("client@example.com", reminders[0].GetProperty("recipientEmail").GetString());
+    }
+
+    [Fact]
+    public async Task PostManualReminder_DraftInvoice_Returns400()
+    {
+        using var client = CreateClient();
+        var invoiceId = await CreateDraftInvoiceAsync(client);
+
+        var response = await client.PostAsync($"/api/invoices/{invoiceId}/reminders/manual", null);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PostManualReminder_NonExistentInvoice_Returns400()
+    {
+        using var client = CreateClient();
+
+        var response = await client.PostAsync($"/api/invoices/{Guid.NewGuid()}/reminders/manual", null);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetReminderHistory_ReturnsOnlyRemindersForInvoice()
+    {
+        using var client = CreateClient();
+        var (_, invoice1Id) = await CreateOverdueInvoiceAsync(client);
+        var (_, invoice2Id) = await CreateOverdueInvoiceAsync(client);
+
+        await client.PostAsync($"/api/invoices/{invoice1Id}/reminders/manual", null);
+        await client.PostAsync($"/api/invoices/{invoice2Id}/reminders/manual", null);
+
+        var response = await client.GetAsync($"/api/invoices/{invoice1Id}/reminders");
+        var reminders = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        Assert.Single(reminders.EnumerateArray());
+    }
+
+    private async Task<(Guid clientId, Guid invoiceId)> CreateOverdueInvoiceAsync(HttpClient client)
+    {
+        var createResponse = await client.PostAsJsonAsync("/api/clients", new
+        {
+            name = "Alice",
+            email = "client@example.com"
+        });
+        var createBody = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var clientId = createBody.GetProperty("id").GetGuid();
+
+        var issueDate = new DateTime(2026, 5, 1, 0, 0, 0, DateTimeKind.Utc);
+        var dueDate = new DateTime(2026, 5, 15, 0, 0, 0, DateTimeKind.Utc);
+        var invoiceResponse = await client.PostAsJsonAsync("/api/invoices", new
+        {
+            clientId,
+            number = "INV-OD-001",
+            issueDateUtc = issueDate,
+            dueDateUtc = dueDate,
+            currency = "USD"
+        });
+        var invoiceBody = await invoiceResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var invoiceId = invoiceBody.GetProperty("id").GetGuid();
+
+        await client.PostAsJsonAsync($"/api/invoices/{invoiceId}/line-items", new
+        {
+            description = "Service",
+            quantity = 1,
+            unitPrice = 100
+        });
+        await client.PostAsync($"/api/invoices/{invoiceId}/issue", null);
+        await client.PostAsync($"/api/invoices/{invoiceId}/mark-overdue", null);
+
+        return (clientId, invoiceId);
+    }
+
+    [Fact]
     public async Task PostInvoice_Returns404_WhenClientDoesNotExist()
     {
         using var client = CreateClient();
