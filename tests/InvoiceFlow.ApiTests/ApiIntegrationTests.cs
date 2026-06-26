@@ -584,4 +584,70 @@ public class ApiIntegrationTests
         Assert.Contains("AutomaticOverdue", types);
         Assert.Equal(2, types.Count);
     }
+
+    [Fact]
+    public async Task PublicInvoice_InvalidToken_Returns404()
+    {
+        using var client = CreateClient();
+
+        var response = await client.GetAsync("/api/public/invoices/nonexistent-token");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task AutomaticReminder_Idempotent_NoDuplicateWithinCooldown()
+    {
+        using var factory = new ApiWebApplicationFactory();
+        using var client = factory.CreateClient();
+
+        var createResponse = await client.PostAsJsonAsync("/api/clients", new
+        {
+            name = "Idempotent Corp",
+            email = "idempotent@example.com"
+        });
+        var clientBody = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var clientId = clientBody.GetProperty("id").GetGuid();
+
+        var issueDate = new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc);
+        var dueDate = new DateTime(2026, 4, 10, 0, 0, 0, DateTimeKind.Utc);
+        var invoiceResponse = await client.PostAsJsonAsync("/api/invoices", new
+        {
+            clientId,
+            number = "INV-IDEMP-001",
+            issueDateUtc = issueDate,
+            dueDateUtc = dueDate,
+            currency = "USD"
+        });
+        var invoiceBody = await invoiceResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var invoiceId = invoiceBody.GetProperty("id").GetGuid();
+
+        await client.PostAsJsonAsync($"/api/invoices/{invoiceId}/line-items", new
+        {
+            description = "Service",
+            quantity = 1,
+            unitPrice = 100
+        });
+        await client.PostAsync($"/api/invoices/{invoiceId}/issue", null);
+        await client.PostAsync($"/api/invoices/{invoiceId}/mark-overdue", null);
+
+        using var scope = factory.Services.CreateScope();
+        var autoService = scope.ServiceProvider.GetRequiredService<AutomaticReminderService>();
+
+        var utcNow = new DateTime(2026, 4, 20, 12, 0, 0, DateTimeKind.Utc);
+
+        var firstRun = await autoService.SendAutoRemindersAsync(utcNow);
+        Assert.Equal(1, firstRun);
+
+        var secondRun = await autoService.SendAutoRemindersAsync(utcNow);
+        Assert.Equal(0, secondRun);
+
+        var remindersResponse = await client.GetAsync($"/api/invoices/{invoiceId}/reminders");
+        var reminders = await remindersResponse.Content.ReadFromJsonAsync<JsonElement>();
+
+        var autoReminders = reminders.EnumerateArray()
+            .Where(r => r.GetProperty("type").GetString() == "AutomaticOverdue")
+            .ToList();
+        Assert.Single(autoReminders);
+    }
 }
