@@ -1,3 +1,4 @@
+using InvoiceFlow.Application.Options;
 using InvoiceFlow.Application.Reminders;
 using InvoiceFlow.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -11,13 +12,16 @@ public class AutomaticReminderBackgroundService : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<AutomaticReminderBackgroundService> _logger;
+    private readonly ReminderOptions _options;
 
     public AutomaticReminderBackgroundService(
         IServiceScopeFactory scopeFactory,
-        ILogger<AutomaticReminderBackgroundService> logger)
+        ILogger<AutomaticReminderBackgroundService> logger,
+        ReminderOptions options)
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
+        _options = options;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -35,7 +39,7 @@ public class AutomaticReminderBackgroundService : BackgroundService
                 _logger.LogError(ex, "Error processing automatic reminders.");
             }
 
-            await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
+            await Task.Delay(TimeSpan.FromHours(_options.CheckIntervalHours), stoppingToken);
         }
     }
 

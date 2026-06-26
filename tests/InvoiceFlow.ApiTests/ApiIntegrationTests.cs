@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using InvoiceFlow.Application.Reminders;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace InvoiceFlow.ApiTests;
 
@@ -461,5 +463,191 @@ public class ApiIntegrationTests
         });
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task InvoiceDeliveryFlow_FullLifecycle_ReturnsPdfAndPublicLink()
+    {
+        using var client = CreateClient();
+
+        var createClientResponse = await client.PostAsJsonAsync("/api/clients", new
+        {
+            name = "Acme Corp",
+            email = "billing@acme.com"
+        });
+        var clientBody = await createClientResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var clientId = clientBody.GetProperty("id").GetGuid();
+
+        var issueDate = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
+        var dueDate = issueDate.AddDays(30);
+        var createInvoiceResponse = await client.PostAsJsonAsync("/api/invoices", new
+        {
+            clientId,
+            number = "INV-DELIVERY-001",
+            issueDateUtc = issueDate,
+            dueDateUtc = dueDate,
+            currency = "USD"
+        });
+        var invoiceBody = await createInvoiceResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var invoiceId = invoiceBody.GetProperty("id").GetGuid();
+
+        await client.PostAsJsonAsync($"/api/invoices/{invoiceId}/line-items", new
+        {
+            description = "Consulting Services",
+            quantity = 10,
+            unitPrice = 150
+        });
+
+        await client.PostAsJsonAsync($"/api/invoices/{invoiceId}/line-items", new
+        {
+            description = "Software License",
+            quantity = 2,
+            unitPrice = 500
+        });
+
+        var issueResponse = await client.PostAsync($"/api/invoices/{invoiceId}/issue", null);
+        Assert.Equal(HttpStatusCode.OK, issueResponse.StatusCode);
+
+        var pdfResponse = await client.GetAsync($"/api/invoices/{invoiceId}/pdf");
+        Assert.Equal(HttpStatusCode.OK, pdfResponse.StatusCode);
+        Assert.Equal("application/pdf", pdfResponse.Content.Headers.ContentType?.MediaType);
+        var pdfBytes = await pdfResponse.Content.ReadAsByteArrayAsync();
+        Assert.True(pdfBytes.Length > 0, "PDF content should not be empty");
+        Assert.StartsWith("%PDF", System.Text.Encoding.ASCII.GetString(pdfBytes.AsSpan(0, Math.Min(8, pdfBytes.Length))));
+
+        var getInvoiceResponse = await client.GetAsync($"/api/invoices/{invoiceId}");
+        var invoice = await getInvoiceResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var publicId = invoice.GetProperty("publicId").GetString();
+        Assert.NotNull(publicId);
+        Assert.NotEmpty(publicId);
+
+        var publicResponse = await client.GetAsync($"/api/public/invoices/{publicId}");
+        Assert.Equal(HttpStatusCode.OK, publicResponse.StatusCode);
+        var publicInvoice = await publicResponse.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Acme Corp", publicInvoice.GetProperty("clientName").GetString());
+        Assert.Equal("INV-DELIVERY-001", publicInvoice.GetProperty("number").GetString());
+    }
+
+    [Fact]
+    public async Task ReminderFlow_ManualThenAutomatic_RecordsBothTypes()
+    {
+        using var factory = new ApiWebApplicationFactory();
+        using var client = factory.CreateClient();
+
+        var createResponse = await client.PostAsJsonAsync("/api/clients", new
+        {
+            name = "Overdue Corp",
+            email = "overdue@example.com"
+        });
+        var clientBody = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var clientId = clientBody.GetProperty("id").GetGuid();
+
+        var issueDate = new DateTime(2026, 5, 1, 0, 0, 0, DateTimeKind.Utc);
+        var dueDate = new DateTime(2026, 5, 15, 0, 0, 0, DateTimeKind.Utc);
+        var invoiceResponse = await client.PostAsJsonAsync("/api/invoices", new
+        {
+            clientId,
+            number = "INV-REMINDER-001",
+            issueDateUtc = issueDate,
+            dueDateUtc = dueDate,
+            currency = "USD"
+        });
+        var invoiceBody = await invoiceResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var invoiceId = invoiceBody.GetProperty("id").GetGuid();
+
+        await client.PostAsJsonAsync($"/api/invoices/{invoiceId}/line-items", new
+        {
+            description = "Service",
+            quantity = 1,
+            unitPrice = 100
+        });
+        await client.PostAsync($"/api/invoices/{invoiceId}/issue", null);
+        await client.PostAsync($"/api/invoices/{invoiceId}/mark-overdue", null);
+
+        var manualResponse = await client.PostAsync($"/api/invoices/{invoiceId}/reminders/manual", null);
+        Assert.Equal(HttpStatusCode.Created, manualResponse.StatusCode);
+
+        using var scope = factory.Services.CreateScope();
+        var autoService = scope.ServiceProvider.GetRequiredService<AutomaticReminderService>();
+        var sentCount = await autoService.SendAutoRemindersAsync(new DateTime(2026, 5, 20, 0, 0, 0, DateTimeKind.Utc));
+        Assert.Equal(1, sentCount);
+
+        var remindersResponse = await client.GetAsync($"/api/invoices/{invoiceId}/reminders");
+        var reminders = await remindersResponse.Content.ReadFromJsonAsync<JsonElement>();
+
+        var types = reminders.EnumerateArray()
+            .Select(r => r.GetProperty("type").GetString()!)
+            .OrderBy(t => t)
+            .ToList();
+
+        Assert.Contains("ManualOverdue", types);
+        Assert.Contains("AutomaticOverdue", types);
+        Assert.Equal(2, types.Count);
+    }
+
+    [Fact]
+    public async Task PublicInvoice_InvalidToken_Returns404()
+    {
+        using var client = CreateClient();
+
+        var response = await client.GetAsync("/api/public/invoices/nonexistent-token");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task AutomaticReminder_Idempotent_NoDuplicateWithinCooldown()
+    {
+        using var factory = new ApiWebApplicationFactory();
+        using var client = factory.CreateClient();
+
+        var createResponse = await client.PostAsJsonAsync("/api/clients", new
+        {
+            name = "Idempotent Corp",
+            email = "idempotent@example.com"
+        });
+        var clientBody = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var clientId = clientBody.GetProperty("id").GetGuid();
+
+        var issueDate = new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc);
+        var dueDate = new DateTime(2026, 4, 10, 0, 0, 0, DateTimeKind.Utc);
+        var invoiceResponse = await client.PostAsJsonAsync("/api/invoices", new
+        {
+            clientId,
+            number = "INV-IDEMP-001",
+            issueDateUtc = issueDate,
+            dueDateUtc = dueDate,
+            currency = "USD"
+        });
+        var invoiceBody = await invoiceResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var invoiceId = invoiceBody.GetProperty("id").GetGuid();
+
+        await client.PostAsJsonAsync($"/api/invoices/{invoiceId}/line-items", new
+        {
+            description = "Service",
+            quantity = 1,
+            unitPrice = 100
+        });
+        await client.PostAsync($"/api/invoices/{invoiceId}/issue", null);
+        await client.PostAsync($"/api/invoices/{invoiceId}/mark-overdue", null);
+
+        using var scope = factory.Services.CreateScope();
+        var autoService = scope.ServiceProvider.GetRequiredService<AutomaticReminderService>();
+
+        var utcNow = new DateTime(2026, 4, 20, 12, 0, 0, DateTimeKind.Utc);
+
+        var firstRun = await autoService.SendAutoRemindersAsync(utcNow);
+        Assert.Equal(1, firstRun);
+
+        var secondRun = await autoService.SendAutoRemindersAsync(utcNow);
+        Assert.Equal(0, secondRun);
+
+        var remindersResponse = await client.GetAsync($"/api/invoices/{invoiceId}/reminders");
+        var reminders = await remindersResponse.Content.ReadFromJsonAsync<JsonElement>();
+
+        var autoReminders = reminders.EnumerateArray()
+            .Where(r => r.GetProperty("type").GetString() == "AutomaticOverdue")
+            .ToList();
+        Assert.Single(autoReminders);
     }
 }

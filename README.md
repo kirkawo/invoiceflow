@@ -41,11 +41,23 @@ tests/
 docs/
 ```
 
+## CI
+
+A GitHub Actions workflow runs on every push and pull request to `main`:
+
+- **Trigger**: `push` / `pull_request` on `main`
+- **Steps**:
+  1. Restore NuGet packages
+  2. Build solution in **Release** configuration
+  3. Run all tests (unit + integration) — integration tests use in-memory repositories, no external Postgres required
+  4. Upload test results as artifacts on failure
+- **Docker smoke check**: On push to `main`, the Docker image for the Web app is built to verify the Dockerfile stays valid.
+- **Secrets required**: None for CI. Tests run in `Testing` environment with safe defaults.
+
 ## Out of scope for MVP
 
 - AI/ML features
 - Cryptocurrency/blockchain
-- Docker/containerization
 - Entity Framework Core / Identity
 - MediatR / FluentValidation
 - Third-party payment gateways

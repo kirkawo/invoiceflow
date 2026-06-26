@@ -1,4 +1,5 @@
 using InvoiceFlow.Application.Abstractions;
+using InvoiceFlow.Application.Options;
 using InvoiceFlow.Application.Reminders;
 using InvoiceFlow.Domain;
 
@@ -13,6 +14,7 @@ public class AutomaticReminderServiceTests
     private readonly FakeReminderRepository _reminderRepository;
     private readonly FakeEmailSender _emailSender;
     private readonly FakeCurrentWorkspaceService _currentWorkspaceService;
+    private readonly ReminderOptions _options;
 
     public AutomaticReminderServiceTests()
     {
@@ -21,12 +23,20 @@ public class AutomaticReminderServiceTests
         _reminderRepository = new FakeReminderRepository { FilterWorkspaceId = TestWorkspaceId };
         _emailSender = new FakeEmailSender();
         _currentWorkspaceService = new FakeCurrentWorkspaceService { WorkspaceId = TestWorkspaceId };
+        _options = new ReminderOptions
+        {
+            CheckIntervalHours = 1,
+            OverdueThresholdDays = 1,
+            CooldownDays = 7,
+            MaxAutoReminders = 2
+        };
         _service = new AutomaticReminderService(
             _invoiceRepository,
             _reminderRepository,
             _clientRepository,
             _emailSender,
-            _currentWorkspaceService);
+            _currentWorkspaceService,
+            _options);
     }
 
     private async Task<Guid> CreateClientAsync(string email = "client@example.com")
@@ -156,7 +166,7 @@ public class AutomaticReminderServiceTests
         // Wipe client email via wrapped repo
         var clientRepoNoEmail = new ClientNoEmailRepo(_clientRepository, clientId);
         var service = new AutomaticReminderService(
-            _invoiceRepository, _reminderRepository, clientRepoNoEmail, _emailSender, _currentWorkspaceService);
+            _invoiceRepository, _reminderRepository, clientRepoNoEmail, _emailSender, _currentWorkspaceService, _options);
 
         var count = await service.SendAutoRemindersAsync(now);
 
