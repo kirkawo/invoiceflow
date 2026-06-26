@@ -52,7 +52,7 @@ docs/
 ### Start the database
 
 ```sh
-docker compose up -d
+docker compose -f docker-compose.dev.yml up -d
 ```
 
 PostgreSQL starts on host port **5433** (mapped to container port 5432). If another local project already uses port 5432, InvoiceFlow's DB will not conflict.
