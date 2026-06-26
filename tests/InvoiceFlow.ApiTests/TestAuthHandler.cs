@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using System.Text.Encodings.Web;
+using InvoiceFlow.Application.Abstractions;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -10,11 +12,17 @@ public class TestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions
 {
     public const string SchemeName = "Test";
 
+    private readonly ICurrentWorkspaceService _workspaceService;
+
     public TestAuthHandler(
         IOptionsMonitor<AuthenticationSchemeOptions> options,
         ILoggerFactory logger,
-        UrlEncoder encoder)
-        : base(options, logger, encoder) { }
+        UrlEncoder encoder,
+        ICurrentWorkspaceService workspaceService)
+        : base(options, logger, encoder)
+    {
+        _workspaceService = workspaceService;
+    }
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
@@ -23,7 +31,7 @@ public class TestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions
             new Claim(ClaimTypes.NameIdentifier, "test-user"),
             new Claim(ClaimTypes.Name, "test-user"),
             new Claim(ClaimTypes.Email, "test@invoiceflow.dev"),
-            new Claim("WorkspaceId", new FakeCurrentWorkspaceService().WorkspaceId.ToString())
+            new Claim("WorkspaceId", _workspaceService.WorkspaceId.ToString())
         }, SchemeName);
 
         var principal = new ClaimsPrincipal(identity);

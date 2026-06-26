@@ -1,4 +1,5 @@
 using InvoiceFlow.Application.Abstractions;
+using InvoiceFlow.Application.Options;
 using InvoiceFlow.Domain;
 
 namespace InvoiceFlow.Application.Reminders;
@@ -10,19 +11,22 @@ public class AutomaticReminderService
     private readonly IClientRepository _clientRepository;
     private readonly IEmailSender _emailSender;
     private readonly ICurrentWorkspaceService _currentWorkspaceService;
+    private readonly ReminderOptions _options;
 
     public AutomaticReminderService(
         IInvoiceRepository invoiceRepository,
         IReminderRepository reminderRepository,
         IClientRepository clientRepository,
         IEmailSender emailSender,
-        ICurrentWorkspaceService currentWorkspaceService)
+        ICurrentWorkspaceService currentWorkspaceService,
+        ReminderOptions options)
     {
         _invoiceRepository = invoiceRepository;
         _reminderRepository = reminderRepository;
         _clientRepository = clientRepository;
         _emailSender = emailSender;
         _currentWorkspaceService = currentWorkspaceService;
+        _options = options;
     }
 
     public async Task<int> SendAutoRemindersAsync(
@@ -65,16 +69,16 @@ public class AutomaticReminderService
         if (autoReminders.Count == 0)
         {
             var daysOverdue = (utcNow.Date - invoice.DueDateUtc.Date).Days;
-            if (daysOverdue < 1)
+            if (daysOverdue < _options.OverdueThresholdDays)
                 return false;
         }
         else if (autoReminders.Count == 1)
         {
             var firstSent = autoReminders[0].SentAtUtc;
-            if ((utcNow - firstSent).TotalDays < 7)
+            if ((utcNow - firstSent).TotalDays < _options.CooldownDays)
                 return false;
         }
-        else
+        else if (autoReminders.Count >= _options.MaxAutoReminders)
         {
             return false;
         }

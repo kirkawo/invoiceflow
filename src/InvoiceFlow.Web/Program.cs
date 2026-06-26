@@ -2,6 +2,7 @@ using System.Security.Claims;
 using InvoiceFlow.Application;
 using InvoiceFlow.Application.Abstractions;
 using InvoiceFlow.Application.Invoices;
+using InvoiceFlow.Application.Options;
 using InvoiceFlow.Infrastructure;
 using InvoiceFlow.Infrastructure.Persistence;
 using InvoiceFlow.Pdf;
@@ -14,6 +15,9 @@ builder.Services
     .AddApplication()
     .AddInfrastructure(builder.Configuration)
     .AddPdf();
+
+builder.Services.Configure<AppOptions>(builder.Configuration.GetSection(AppOptions.SectionName));
+builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection(EmailOptions.SectionName));
 
 builder.Services.AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
     {

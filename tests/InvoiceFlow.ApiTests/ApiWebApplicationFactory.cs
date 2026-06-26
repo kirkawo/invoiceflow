@@ -1,4 +1,5 @@
 using InvoiceFlow.Application.Abstractions;
+using InvoiceFlow.Application.Options;
 using InvoiceFlow.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
@@ -10,6 +11,13 @@ namespace InvoiceFlow.ApiTests;
 
 public class ApiWebApplicationFactory : WebApplicationFactory<Program>
 {
+    private readonly Guid _workspaceId;
+
+    public ApiWebApplicationFactory(Guid? workspaceId = null)
+    {
+        _workspaceId = workspaceId ?? new("11111111-1111-1111-1111-111111111111");
+    }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -34,7 +42,7 @@ public class ApiWebApplicationFactory : WebApplicationFactory<Program>
             services.AddSingleton<IInvoiceRepository, InMemoryInvoiceRepository>();
             services.AddSingleton<IReminderRepository, InMemoryReminderRepository>();
             services.AddSingleton<IEmailSender>(new FakeEmailSender());
-            services.AddSingleton<ICurrentWorkspaceService>(new FakeCurrentWorkspaceService());
+            services.AddSingleton<ICurrentWorkspaceService>(new FakeCurrentWorkspaceService(_workspaceId));
 
             services.Configure<AuthenticationOptions>(options =>
             {
@@ -45,13 +53,27 @@ public class ApiWebApplicationFactory : WebApplicationFactory<Program>
 
             services.AddAuthentication()
                 .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, null);
+
+            services.Configure<ReminderOptions>(o =>
+            {
+                o.CheckIntervalHours = 1;
+                o.OverdueThresholdDays = 1;
+                o.CooldownDays = 7;
+                o.MaxAutoReminders = 2;
+            });
+            services.AddSingleton(sp => sp.GetRequiredService<IOptions<ReminderOptions>>().Value);
         });
     }
 }
 
 public class FakeCurrentWorkspaceService : ICurrentWorkspaceService
 {
-    public Guid WorkspaceId => new("11111111-1111-1111-1111-111111111111");
+    public Guid WorkspaceId { get; }
+
+    public FakeCurrentWorkspaceService(Guid workspaceId)
+    {
+        WorkspaceId = workspaceId;
+    }
 }
 
 public class FakeEmailSender : IEmailSender
