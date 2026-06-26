@@ -34,6 +34,13 @@ public class InMemoryInvoiceRepository : IInvoiceRepository
         Task.FromResult<IReadOnlyList<Invoice>>(
             _store.Values.ToList().AsReadOnly());
 
+    public Task<IReadOnlyList<Invoice>> GetOverdueCandidatesAsync(DateTime utcNow, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<Invoice>>(
+            _store.Values
+                .Where(i => i.Status == InvoiceStatus.Issued && i.DueDateUtc < utcNow)
+                .ToList()
+                .AsReadOnly());
+
     public Task<string> GetNextInvoiceNumberAsync(CancellationToken cancellationToken = default)
     {
         var year = DateTime.UtcNow.Year;

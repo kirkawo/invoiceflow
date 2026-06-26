@@ -55,7 +55,13 @@ else
                             <td><span class="badge @StatusClass(invoice.Status)">@invoice.Status</span></td>
                             <td>@invoice.Currency</td>
                             <td>@invoice.Total.ToString("F2")</td>
-                            <td>@invoice.DueDateUtc.ToShortDateString()</td>
+                            <td>
+                                @invoice.DueDateUtc.ToShortDateString()
+                                @if (DueWarningHelper.GetDueWarning(invoice.Status, invoice.DueDateUtc, _today) is { } warning)
+                                {
+                                    <br /><span class="@warning.CssClass" style="font-size:0.8rem;white-space:nowrap;">@warning.Text</span>
+                                }
+                            </td>
                             <td>@RenderActions(invoice)</td>
                         </tr>
                     }
@@ -82,7 +88,13 @@ else
                     </div>
                     <div class="card-row">
                         <span class="card-label">Due</span>
-                        <span class="card-value">@invoice.DueDateUtc.ToShortDateString()</span>
+                        <span class="card-value">
+                            @invoice.DueDateUtc.ToShortDateString()
+                            @if (DueWarningHelper.GetDueWarning(invoice.Status, invoice.DueDateUtc, _today) is { } warning)
+                            {
+                                <br /><span class="@warning.CssClass" style="font-size:0.75rem;">@warning.Text</span>
+                            }
+                        </span>
                     </div>
                     <div class="card-actions">@RenderActions(invoice)</div>
                 </div>
@@ -156,6 +168,8 @@ else
 
     private Task CancelInvoice(Guid id) =>
         ExecuteAction(id, () => InvoiceService.CancelInvoiceAsync(id));
+
+    private DateOnly _today => DateOnly.FromDateTime(DateTime.UtcNow);
 
     private static string StatusClass(InvoiceStatus status) => status switch
     {

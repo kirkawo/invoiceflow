@@ -43,6 +43,22 @@ builder.Services.AddRazorComponents()
 
 var app = builder.Build();
 
+if (app.Environment.IsDevelopment())
+{
+    using (var scope = app.Services.CreateScope())
+    {
+        var context = scope.ServiceProvider.GetRequiredService<InvoiceFlowDbContext>();
+        var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+
+        if (config.GetValue<bool>("SampleData:Enabled"))
+        {
+            var refresh = config.GetValue<bool>("SampleData:RefreshOnStartup");
+            var append = !refresh && config.GetValue<bool>("SampleData:AppendOnStartup");
+            await InvoiceFlowSampleDataSeeder.SeedAsync(context, refresh, append);
+        }
+    }
+}
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);

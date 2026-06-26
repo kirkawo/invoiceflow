@@ -6,6 +6,7 @@
 @inject ClientService ClientService
 @inject NavigationManager Navigation
 @inject IJSRuntime JsRuntime
+@inject ManualReminderService ReminderService
 
 <PageTitle>Invoice @invoice?.Number - InvoiceFlow</PageTitle>
 
@@ -65,6 +66,10 @@ else
                 <div class="col-md-4">
                     <div class="text-muted small text-uppercase fw-semibold mb-1">Due Date</div>
                     <div>@invoice.DueDateUtc.ToShortDateString()</div>
+                    @if (DueWarningHelper.GetDueWarning(invoice.Status, invoice.DueDateUtc, _today) is { } warning)
+                    {
+                        <div><span class="@warning.CssClass" style="font-size:0.85rem;">@warning.Text</span></div>
+                    }
                 </div>
             </div>
             <div class="row g-3 mt-1">
@@ -199,6 +204,92 @@ else
         </div>
     }
 
+    @if (invoice.Status != InvoiceStatus.Draft)
+    {
+        <hr class="my-4" />
+        <h3 class="mb-3">Reminder</h3>
+
+        @if (reminderFeedback is not null)
+        {
+            <div class="alert @reminderFeedbackCssClass py-2 small">@reminderFeedback</div>
+        }
+
+        <div class="d-flex align-items-center gap-2 mb-3">
+            @{
+                var canSend = invoice.Status == InvoiceStatus.Overdue && !string.IsNullOrWhiteSpace(clientEmail);
+                var sendDisabled = !canSend || sendingReminder;
+                var sendTitle = invoice.Status != InvoiceStatus.Overdue
+                    ? "Reminders can only be sent for overdue invoices."
+                    : string.IsNullOrWhiteSpace(clientEmail)
+                        ? "Client has no email address."
+                        : "";
+            }
+            <button class="btn btn-warning" disabled="@sendDisabled" title="@sendTitle" @onclick="SendReminder">
+                @(sendingReminder ? "Sending..." : "Send Reminder")
+            </button>
+            @if (invoice.Status == InvoiceStatus.Overdue)
+            {
+                if (!string.IsNullOrWhiteSpace(clientEmail))
+                {
+                    <small class="text-muted">Will be sent to @clientEmail</small>
+                }
+                else
+                {
+                    <small class="text-danger">Client has no email address.</small>
+                }
+            }
+            else
+            {
+                <small class="text-muted">@sendTitle</small>
+            }
+        </div>
+
+        @if (loadingReminders)
+        {
+            <p class="text-muted small">Loading reminder history...</p>
+        }
+        else if (reminders.Count > 0)
+        {
+            <h5 class="mb-2">Reminder History</h5>
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Recipient</th>
+                            <th>Subject</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in reminders)
+                        {
+                            <tr>
+                                <td class="text-nowrap">@r.SentAtUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                                <td>
+                                    @if (r.Status == ReminderStatus.Sent)
+                                    {
+                                        <span class="badge bg-success">Sent</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-danger" title="@r.FailureReason">Failed</span>
+                                    }
+                                </td>
+                                <td>@r.RecipientEmail</td>
+                                <td>@r.Subject</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <p class="text-muted small">No reminders sent yet.</p>
+        }
+    }
+
     <hr class="my-4" />
 
     <a href="/invoices" class="btn btn-outline-secondary btn-sm">
@@ -209,14 +300,23 @@ else
     </a>
 }
 
+@using InvoiceFlow.Application.Reminders
+
 @code {
     private InvoiceDto? invoice;
     private string? clientName;
+    private string? clientEmail;
     private string? error;
     private string? formError;
     private bool saving;
     private bool copied;
     private bool ShowAddForm;
+
+    private bool sendingReminder;
+    private string? reminderFeedback;
+    private string? reminderFeedbackCssClass;
+    private bool loadingReminders;
+    private IReadOnlyList<ReminderDto> reminders = [];
 
     private string NewDescription = string.Empty;
     private decimal NewQuantity = 1;
@@ -252,9 +352,16 @@ else
         }
 
         var clients = await ClientService.GetClientsAsync();
-        clientName = clients.FirstOrDefault(c => c.Id == invoice.ClientId)?.Name ?? "Unknown";
+        var matchedClient = clients.FirstOrDefault(c => c.Id == invoice.ClientId);
+        clientName = matchedClient?.Name ?? "Unknown";
+        clientEmail = matchedClient?.Email;
         ShowAddForm = false;
         EditingLineItemId = 0;
+
+        if (invoice.Status != InvoiceStatus.Draft)
+        {
+            await LoadRemindersAsync();
+        }
     }
 
     private async Task AddLineItem()
@@ -376,6 +483,43 @@ else
         Navigation.NavigateTo($"/invoices/{Id}/pdf", true);
     }
 
+    private async Task LoadRemindersAsync()
+    {
+        if (invoice is null) return;
+        loadingReminders = true;
+        try
+        {
+            reminders = await ReminderService.GetReminderHistoryAsync(invoice.Id);
+        }
+        finally
+        {
+            loadingReminders = false;
+        }
+    }
+
+    private async Task SendReminder()
+    {
+        if (invoice is null) return;
+        sendingReminder = true;
+        reminderFeedback = null;
+        try
+        {
+            await ReminderService.SendManualReminderAsync(invoice.Id);
+            reminderFeedback = "Reminder sent successfully.";
+            reminderFeedbackCssClass = "alert-success";
+            await LoadRemindersAsync();
+        }
+        catch (InvalidOperationException ex)
+        {
+            reminderFeedback = ex.Message;
+            reminderFeedbackCssClass = "alert-danger";
+        }
+        finally
+        {
+            sendingReminder = false;
+        }
+    }
+
     private async Task CopyPublicLink()
     {
         if (invoice is null || invoice.LineItems.Count == 0 || string.IsNullOrWhiteSpace(invoice.PublicId))
@@ -387,6 +531,8 @@ else
         copied = true;
         _ = Task.Delay(3000).ContinueWith(_ => InvokeAsync(() => copied = false));
     }
+
+    private DateOnly _today => DateOnly.FromDateTime(DateTime.UtcNow);
 
     private static string StatusClass(InvoiceStatus status) => status switch
     {

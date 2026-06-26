@@ -1,0 +1,66 @@
+using InvoiceFlow.Application.Reminders;
+using InvoiceFlow.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+
+namespace InvoiceFlow.Infrastructure.BackgroundJobs;
+
+public class AutomaticReminderBackgroundService : BackgroundService
+{
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly ILogger<AutomaticReminderBackgroundService> _logger;
+
+    public AutomaticReminderBackgroundService(
+        IServiceScopeFactory scopeFactory,
+        ILogger<AutomaticReminderBackgroundService> logger)
+    {
+        _scopeFactory = scopeFactory;
+        _logger = logger;
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        _logger.LogInformation("Automatic reminder background service started.");
+
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                await ProcessAllWorkspacesAsync(stoppingToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing automatic reminders.");
+            }
+
+            await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
+        }
+    }
+
+    private async Task ProcessAllWorkspacesAsync(CancellationToken cancellationToken)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<InvoiceFlowDbContext>();
+        var workspaceIds = await dbContext.Workspaces
+            .Select(w => w.Id)
+            .ToListAsync(cancellationToken);
+
+        foreach (var workspaceId in workspaceIds)
+        {
+            using var wsScope = _scopeFactory.CreateScope();
+            using var _ = CurrentWorkspaceService.PushWorkspace(workspaceId);
+
+            var service = wsScope.ServiceProvider.GetRequiredService<AutomaticReminderService>();
+            var count = await service.SendAutoRemindersAsync(DateTime.UtcNow, cancellationToken);
+
+            if (count > 0)
+            {
+                _logger.LogInformation(
+                    "Sent {Count} automatic reminder(s) for workspace {WorkspaceId}.",
+                    count, workspaceId);
+            }
+        }
+    }
+}

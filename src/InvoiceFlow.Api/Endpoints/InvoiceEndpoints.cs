@@ -1,6 +1,7 @@
 using InvoiceFlow.Api.Endpoints.Contracts;
 using InvoiceFlow.Application.Abstractions;
 using InvoiceFlow.Application.Invoices;
+using InvoiceFlow.Application.Reminders;
 using InvoiceFlow.Domain;
 
 namespace InvoiceFlow.Api.Endpoints;
@@ -161,6 +162,25 @@ public static class InvoiceEndpoints
 
             var pdf = pdfService.GeneratePdf(invoice);
             return Results.File(pdf, "application/pdf", $"invoice-{invoiceDto.Number}.pdf");
+        });
+
+        group.MapPost("/{id:guid}/reminders/manual", async (Guid id, ManualReminderService reminderService) =>
+        {
+            try
+            {
+                var reminder = await reminderService.SendManualReminderAsync(id);
+                return Results.Created($"/api/invoices/{id}/reminders", reminder);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        group.MapGet("/{id:guid}/reminders", async (Guid id, ManualReminderService reminderService) =>
+        {
+            var reminders = await reminderService.GetReminderHistoryAsync(id);
+            return Results.Ok(reminders);
         });
 
         return app;

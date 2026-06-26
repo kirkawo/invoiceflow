@@ -10,6 +10,7 @@ public class InvoiceFlowDbContext : IdentityDbContext<ApplicationUser, IdentityR
     public DbSet<Client> Clients => Set<Client>();
     public DbSet<Invoice> Invoices => Set<Invoice>();
     public DbSet<Workspace> Workspaces => Set<Workspace>();
+    public DbSet<Reminder> Reminders => Set<Reminder>();
 
     public InvoiceFlowDbContext(DbContextOptions<InvoiceFlowDbContext> options) : base(options) { }
 
