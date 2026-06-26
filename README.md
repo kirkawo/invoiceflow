@@ -41,6 +41,37 @@ tests/
 docs/
 ```
 
+## Local development
+
+### Prerequisites
+
+- .NET 8 SDK
+- Docker (for PostgreSQL)
+
+### Start the database
+
+```sh
+docker compose up -d
+```
+
+PostgreSQL starts on host port **5433** (mapped to container port 5432). If another local project already uses port 5432, InvoiceFlow's DB will not conflict.
+
+### Run the app
+
+```sh
+dotnet run --project src/InvoiceFlow.Api    # API on http://localhost:5232
+dotnet run --project src/InvoiceFlow.Web    # Web on http://localhost:5217
+```
+
+### Connection notes
+
+| Context        | Host                    | Port |
+|----------------|-------------------------|------|
+| Local dev (host→container) | `localhost`     | 5433 |
+| Container→container        | `db` (service)  | 5432 |
+
+The base `appsettings.json` connection strings use `localhost:5433` for host-side development. Production/staging override via `Database:ConnectionString` env var or `appsettings.Production.json`.
+
 ## CI
 
 A GitHub Actions workflow runs on every push and pull request to `main`:
