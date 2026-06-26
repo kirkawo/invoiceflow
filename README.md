@@ -23,7 +23,8 @@ Backend-first billing assistant for freelancers. Handles invoices, reminders, pa
 | **Pdf** | `InvoiceFlow.Pdf` | PDF generation engine |
 | **Api** | `InvoiceFlow.Api` | REST API (ASP.NET Core) |
 | **Web** | `InvoiceFlow.Web` | Blazor web app |
-| **UnitTests** | `InvoiceFlow.UnitTests` | xUnit tests |
+| **UnitTests** | `InvoiceFlow.UnitTests` | xUnit unit tests |
+| **ApiTests**  | `InvoiceFlow.ApiTests`  | xUnit integration tests |
 
 ## Current structure
 
@@ -51,7 +52,7 @@ docs/
 ### Start the database
 
 ```sh
-docker compose up -d
+docker compose -f docker-compose.dev.yml up -d
 ```
 
 PostgreSQL starts on host port **5433** (mapped to container port 5432). If another local project already uses port 5432, InvoiceFlow's DB will not conflict.
@@ -82,8 +83,48 @@ A GitHub Actions workflow runs on every push and pull request to `main`:
   2. Build solution in **Release** configuration
   3. Run all tests (unit + integration) — integration tests use in-memory repositories, no external Postgres required
   4. Upload test results as artifacts on failure
-- **Docker smoke check**: On push to `main`, the Docker image for the Web app is built to verify the Dockerfile stays valid.
+- **Docker smoke check**: On push to `main`, Docker images for the Api and Web apps are built to verify both Dockerfiles stay valid.
 - **Secrets required**: None for CI. Tests run in `Testing` environment with safe defaults.
+
+## Production deployment (Docker Compose)
+
+The production stack runs three services: `db` (PostgreSQL 16 Alpine), `api` (the REST API), and `web` (the Blazor app).
+
+```sh
+# 1. Copy and fill in environment variables
+cp .env.example .env
+# Edit .env with your production values
+
+# 2. Start the stack
+docker compose -f docker-compose.prod.yml up -d
+
+# 3. Check logs
+docker compose -f docker-compose.prod.yml logs -f
+```
+
+### Migration strategy
+
+- The **Api** service runs EF Core migrations automatically on startup (both Development and Production).
+- The **Web** service does **not** run migrations — it relies on the Api having applied them, or handles migration idempotency independently.
+- Seed data (default workspace + admin user) only runs in `Development` environment.
+
+### Environment variables
+
+| Variable | Purpose |
+|---|---|
+| `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | PostgreSQL credentials |
+| `API_BASE_URL` | Public-facing URL for the Api service |
+| `WEB_BASE_URL` | Public-facing URL for the Web service |
+| `APP_PUBLIC_BASE_URL` | Used for public invoice share links |
+| `EMAIL_*` | SMTP configuration for email delivery |
+
+### Ports (host → container)
+
+| Service | Host port (default) | Container port |
+|---|---|---|
+| db     | — (internal only)   | 5432 |
+| api    | 5000                | 8080 |
+| web    | 5001                | 8080 |
 
 ## Out of scope for MVP
 

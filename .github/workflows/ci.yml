@@ -59,5 +59,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Build Docker image (Api)
+        run: docker build -t invoiceflow-api:ci -f src/InvoiceFlow.Api/Dockerfile .
+
       - name: Build Docker image (Web)
         run: docker build -t invoiceflow-web:ci -f src/InvoiceFlow.Web/Dockerfile .
+
+      - name: Validate docker-compose.prod.yml
+        run: docker compose -f docker-compose.prod.yml config

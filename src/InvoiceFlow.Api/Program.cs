@@ -49,29 +49,33 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 
 var app = builder.Build();
 
+if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    var context = scope.ServiceProvider.GetRequiredService<InvoiceFlowDbContext>();
+    await context.Database.MigrateAsync();
+}
+
 if (app.Environment.IsDevelopment())
 {
-    using (var scope = app.Services.CreateScope())
+    await using var scope = app.Services.CreateAsyncScope();
+    var context = scope.ServiceProvider.GetRequiredService<InvoiceFlowDbContext>();
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+
+    if (!await context.Workspaces.AnyAsync())
     {
-        var context = scope.ServiceProvider.GetRequiredService<InvoiceFlowDbContext>();
-        await context.Database.MigrateAsync();
+        var workspace = new Workspace("Default");
+        context.Workspaces.Add(workspace);
+        await context.SaveChangesAsync();
 
-        if (!await context.Workspaces.AnyAsync())
+        var user = new ApplicationUser
         {
-            var workspace = new Workspace("Default");
-            context.Workspaces.Add(workspace);
-            await context.SaveChangesAsync();
-
-            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-            var user = new ApplicationUser
-            {
-                UserName = "admin@invoiceflow.dev",
-                Email = "admin@invoiceflow.dev",
-                EmailConfirmed = true,
-                WorkspaceId = workspace.Id
-            };
-            var result = await userManager.CreateAsync(user, "Admin123!");
-        }
+            UserName = "admin@invoiceflow.dev",
+            Email = "admin@invoiceflow.dev",
+            EmailConfirmed = true,
+            WorkspaceId = workspace.Id
+        };
+        await userManager.CreateAsync(user, "Admin123!");
     }
 }
 
