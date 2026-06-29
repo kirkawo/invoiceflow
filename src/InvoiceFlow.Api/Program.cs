@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Text.Json.Serialization;
 using InvoiceFlow.Application;
+using Microsoft.AspNetCore.DataProtection;
 using InvoiceFlow.Application.Options;
 using InvoiceFlow.Infrastructure;
 using InvoiceFlow.Infrastructure.Persistence;
@@ -16,6 +17,10 @@ builder.Services
     .AddApplication()
     .AddInfrastructure(builder.Configuration)
     .AddPdf();
+
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo("/app/DataProtection-Keys"))
+    .SetApplicationName("InvoiceFlow");
 
 builder.Services.Configure<AppOptions>(builder.Configuration.GetSection(AppOptions.SectionName));
 builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection(EmailOptions.SectionName));

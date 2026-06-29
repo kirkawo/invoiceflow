@@ -18,5 +18,6 @@ WORKDIR /app
 COPY --from=build /app .
 EXPOSE 8080
 ENV ASPNETCORE_URLS=http://+:8080
+RUN mkdir -p /app/DataProtection-Keys && chown $APP_UID:$APP_UID /app/DataProtection-Keys
 USER $APP_UID
 ENTRYPOINT ["dotnet", "InvoiceFlow.Api.dll"]

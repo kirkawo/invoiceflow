@@ -130,6 +130,12 @@ The Api exposes `GET /health` (returns `{"status":"healthy"}`) for container hea
 | api    | 5000                | 8080 |
 | web    | 5001                | 8080 |
 
+### Data Protection
+
+Authentication cookies and antiforgery tokens are encrypted using ASP.NET Core Data Protection. Keys are persisted on a Docker named volume (`dataprotection_keys`) shared between Api and Web, mounted at `/app/DataProtection-Keys` in each container. This keeps token decryption stable across restarts.
+
+When switching between stacks or clearing volumes locally, delete browser cookies for `localhost:5000` and `localhost:5001` to avoid stale-key errors.
+
 ## Out of scope for MVP
 
 - AI/ML features
