@@ -102,10 +102,14 @@ docker compose -f docker-compose.prod.yml up -d
 docker compose -f docker-compose.prod.yml logs -f
 ```
 
+### Health checks
+
+The Api exposes `GET /health` (returns `{"status":"healthy"}`) for container health checks and monitoring. The stack's startup order is `db → api → web` — Web waits for Api to complete migrations before starting.
+
 ### Migration strategy
 
 - The **Api** service runs EF Core migrations automatically on startup (both Development and Production).
-- The **Web** service does **not** run migrations — it relies on the Api having applied them, or handles migration idempotency independently.
+- The **Web** service does **not** run migrations — it relies on the Api having applied them.
 - Seed data (default workspace + admin user) only runs in `Development` environment.
 
 ### Environment variables

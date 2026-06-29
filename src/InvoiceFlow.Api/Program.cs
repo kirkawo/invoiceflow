@@ -79,6 +79,8 @@ if (app.Environment.IsDevelopment())
     }
 }
 
+app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
+
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
