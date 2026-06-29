@@ -112,7 +112,11 @@ if (app.Environment.IsProduction() && app.Configuration.GetValue<bool>("Bootstra
 
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
 
-app.UseHttpsRedirection();
+if (app.Configuration.GetValue<bool>("HttpsRedirect"))
+{
+    app.UseHttpsRedirection();
+}
+
 app.UseAuthentication();
 app.UseAuthorization();
 

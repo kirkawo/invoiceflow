@@ -19,7 +19,8 @@ builder.Services
 
 builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo("/app/DataProtection-Keys"))
-    .SetApplicationName("InvoiceFlow");
+    .SetApplicationName("InvoiceFlow")
+    .DisableAutomaticKeyGeneration();
 
 builder.Services.Configure<AppOptions>(builder.Configuration.GetSection(AppOptions.SectionName));
 builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection(EmailOptions.SectionName));
@@ -74,7 +75,11 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-app.UseHttpsRedirection();
+if (app.Configuration.GetValue<bool>("HttpsRedirect"))
+{
+    app.UseHttpsRedirection();
+}
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseStaticFiles();
