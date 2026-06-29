@@ -19,13 +19,35 @@ builder.Services
     .AddPdf();
 
 builder.Services.AddDataProtection()
-    .PersistKeysToFileSystem(new DirectoryInfo("/app/DataProtection-Keys"))
+    .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(AppContext.BaseDirectory, "DataProtection-Keys")))
     .SetApplicationName("InvoiceFlow");
 
 builder.Services.Configure<AppOptions>(builder.Configuration.GetSection(AppOptions.SectionName));
 builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection(EmailOptions.SectionName));
 
-builder.Services.AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
+// builder.Services.AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
+//     {
+//         options.User.RequireUniqueEmail = true;
+//         options.Password.RequireDigit = false;
+//         options.Password.RequiredLength = 6;
+//         options.Password.RequireNonAlphanumeric = false;
+//         options.Password.RequireUppercase = false;
+//     })
+//     .AddEntityFrameworkStores<InvoiceFlowDbContext>()
+//     .AddDefaultTokenProviders()
+//     .AddClaimsPrincipalFactory<ApplicationUserClaimsPrincipalFactory>();
+
+// builder.Services.ConfigureApplicationCookie(options =>
+// {
+//     options.Cookie.Name = "InvoiceFlow.Api.Antiforgery";
+//     options.Cookie.HttpOnly = true;
+//     options.ExpireTimeSpan = TimeSpan.FromHours(24);
+//     options.LoginPath = "/login";
+//     options.ReturnUrlParameter = "returnUrl";
+// });
+
+builder.Services
+    .AddIdentityCore<ApplicationUser>(options =>
     {
         options.User.RequireUniqueEmail = true;
         options.Password.RequireDigit = false;
@@ -33,17 +55,10 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
         options.Password.RequireNonAlphanumeric = false;
         options.Password.RequireUppercase = false;
     })
+    .AddRoles<IdentityRole<Guid>>()
     .AddEntityFrameworkStores<InvoiceFlowDbContext>()
-    .AddDefaultTokenProviders()
-    .AddClaimsPrincipalFactory<ApplicationUserClaimsPrincipalFactory>();
-
-builder.Services.ConfigureApplicationCookie(options =>
-{
-    options.Cookie.HttpOnly = true;
-    options.ExpireTimeSpan = TimeSpan.FromHours(24);
-    options.LoginPath = "/login";
-    options.ReturnUrlParameter = "returnUrl";
-});
+    .AddClaimsPrincipalFactory<ApplicationUserClaimsPrincipalFactory>()
+    .AddDefaultTokenProviders();
 
 builder.Services.AddAuthorization();
 
@@ -53,6 +68,17 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 });
 
 var app = builder.Build();
+
+app.Logger.LogInformation("BaseDirectory = {dir}", AppContext.BaseDirectory);
+
+var path = Path.Combine(AppContext.BaseDirectory, "DataProtection-Keys");
+app.Logger.LogInformation("KeyPath = {path}", path);
+app.Logger.LogInformation("Exists = {exists}", Directory.Exists(path));
+
+foreach (var f in Directory.GetFiles(path))
+{
+    app.Logger.LogInformation("Key file = {file}", f);
+}
 
 if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
 {
@@ -117,20 +143,20 @@ if (app.Configuration.GetValue<bool>("HttpsRedirect"))
     app.UseHttpsRedirection();
 }
 
-app.UseAuthentication();
+// app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapPost("/api/auth/login", async (LoginRequest request, SignInManager<ApplicationUser> signInManager) =>
-{
-    var result = await signInManager.PasswordSignInAsync(request.Email, request.Password, true, false);
-    return result.Succeeded ? Results.Ok() : Results.Unauthorized();
-});
+// app.MapPost("/api/auth/login", async (LoginRequest request, SignInManager<ApplicationUser> signInManager) =>
+// {
+//     var result = await signInManager.PasswordSignInAsync(request.Email, request.Password, true, false);
+//     return result.Succeeded ? Results.Ok() : Results.Unauthorized();
+// });
 
-app.MapPost("/api/auth/logout", async (SignInManager<ApplicationUser> signInManager) =>
-{
-    await signInManager.SignOutAsync();
-    return Results.Ok();
-});
+// app.MapPost("/api/auth/logout", async (SignInManager<ApplicationUser> signInManager) =>
+// {
+//     await signInManager.SignOutAsync();
+//     return Results.Ok();
+// });
 
 app.MapClientEndpoints();
 app.MapInvoiceEndpoints();
@@ -141,7 +167,7 @@ app.Run();
 
 public partial class Program { }
 
-public record LoginRequest(string Email, string Password);
+// public record LoginRequest(string Email, string Password);
 
 public class ApplicationUserClaimsPrincipalFactory : UserClaimsPrincipalFactory<ApplicationUser, IdentityRole<Guid>>
 {

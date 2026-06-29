@@ -15,6 +15,7 @@
     }
 
     <form method="post" action="/auth/login">
+        <AntiforgeryToken />
         <input type="hidden" name="returnUrl" value="@returnUrl" />
         <div class="mb-3">
             <label for="email" class="form-label">Email</label>

@@ -18,9 +18,8 @@ builder.Services
     .AddPdf();
 
 builder.Services.AddDataProtection()
-    .PersistKeysToFileSystem(new DirectoryInfo("/app/DataProtection-Keys"))
-    .SetApplicationName("InvoiceFlow")
-    .DisableAutomaticKeyGeneration();
+    .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(AppContext.BaseDirectory, "DataProtection-Keys")))
+    .SetApplicationName("InvoiceFlow");
 
 builder.Services.Configure<AppOptions>(builder.Configuration.GetSection(AppOptions.SectionName));
 builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection(EmailOptions.SectionName));
@@ -39,6 +38,7 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
 
 builder.Services.ConfigureApplicationCookie(options =>
 {
+    options.Cookie.Name = "InvoiceFlow.Auth";
     options.Cookie.HttpOnly = true;
     options.ExpireTimeSpan = TimeSpan.FromHours(24);
     options.LoginPath = "/login";
@@ -48,10 +48,26 @@ builder.Services.ConfigureApplicationCookie(options =>
 builder.Services.AddAuthorization();
 builder.Services.AddCascadingAuthenticationState();
 
-builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
+builder.Services.AddRazorComponents();
+
+builder.Services.AddAntiforgery(options =>
+{
+    options.Cookie.Name = "InvoiceFlow.Web.Antiforgery";
+    options.Cookie.HttpOnly = true;
+});
 
 var app = builder.Build();
+
+app.Logger.LogInformation("BaseDirectory = {dir}", AppContext.BaseDirectory);
+
+var path = Path.Combine(AppContext.BaseDirectory, "DataProtection-Keys");
+app.Logger.LogInformation("KeyPath = {path}", path);
+app.Logger.LogInformation("Exists = {exists}", Directory.Exists(path));
+
+foreach (var f in Directory.GetFiles(path))
+{
+    app.Logger.LogInformation("Key file = {file}", f);
+}
 
 if (app.Environment.IsDevelopment())
 {
@@ -80,9 +96,11 @@ if (app.Configuration.GetValue<bool>("HttpsRedirect"))
     app.UseHttpsRedirection();
 }
 
+app.UseStaticFiles();
+
 app.UseAuthentication();
 app.UseAuthorization();
-app.UseStaticFiles();
+
 app.UseAntiforgery();
 
 app.MapPost("/auth/login", async (HttpContext context, SignInManager<ApplicationUser> signInManager) =>
@@ -126,8 +144,7 @@ app.MapGet("/invoices/{id:guid}/pdf", async (Guid id, InvoiceService invoiceServ
     return Results.File(pdf, "application/pdf", $"invoice-{invoice.Number}.pdf");
 }).RequireAuthorization();
 
-app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode();
+app.MapRazorComponents<App>();
 
 app.Run();
 

@@ -67,6 +67,7 @@ services:
       Email__Username: ${EMAIL_USERNAME}
       Email__Password: ${EMAIL_PASSWORD}
       Email__UseSsl: ${EMAIL_USE_SSL}
+      Logging__LogLevel__Microsoft.AspNetCore.DataProtection: Trace
     ports:
       - "${WEB_PORT:-5001}:8080"
     volumes:
