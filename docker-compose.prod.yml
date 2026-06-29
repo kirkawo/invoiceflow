@@ -32,6 +32,9 @@ services:
       Database__ConnectionString: Host=db;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
       App__BaseUrl: ${API_BASE_URL}
       App__PublicBaseUrl: ${APP_PUBLIC_BASE_URL}
+      Bootstrap__Enabled: ${BOOTSTRAP_ENABLED}
+      Bootstrap__AdminEmail: ${BOOTSTRAP_ADMIN_EMAIL}
+      Bootstrap__AdminPassword: ${BOOTSTRAP_ADMIN_PASSWORD}
       Email__SmtpHost: ${EMAIL_HOST}
       Email__SmtpPort: ${EMAIL_PORT}
       Email__FromAddress: ${EMAIL_FROM}

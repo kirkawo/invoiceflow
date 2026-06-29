@@ -84,6 +84,32 @@ if (app.Environment.IsDevelopment())
     }
 }
 
+if (app.Environment.IsProduction() && app.Configuration.GetValue<bool>("Bootstrap:Enabled"))
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    var context = scope.ServiceProvider.GetRequiredService<InvoiceFlowDbContext>();
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+
+    if (!await context.Workspaces.AnyAsync())
+    {
+        var workspace = new Workspace("Default");
+        context.Workspaces.Add(workspace);
+        await context.SaveChangesAsync();
+
+        var email = app.Configuration.GetValue<string>("Bootstrap:AdminEmail") ?? "admin@invoiceflow.dev";
+        var password = app.Configuration.GetValue<string>("Bootstrap:AdminPassword") ?? "Admin123!";
+
+        var user = new ApplicationUser
+        {
+            UserName = email,
+            Email = email,
+            EmailConfirmed = true,
+            WorkspaceId = workspace.Id
+        };
+        await userManager.CreateAsync(user, password);
+    }
+}
+
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
 
 app.UseHttpsRedirection();
