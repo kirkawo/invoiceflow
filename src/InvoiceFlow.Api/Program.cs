@@ -18,8 +18,11 @@ builder.Services
     .AddInfrastructure(builder.Configuration)
     .AddPdf();
 
+var dataProtectionKeysPath = Path.Combine(AppContext.BaseDirectory, "DataProtection-Keys");
+Directory.CreateDirectory(dataProtectionKeysPath);
+
 builder.Services.AddDataProtection()
-    .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(AppContext.BaseDirectory, "DataProtection-Keys")))
+    .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath))
     .SetApplicationName("InvoiceFlow");
 
 builder.Services.Configure<AppOptions>(builder.Configuration.GetSection(AppOptions.SectionName));
@@ -71,13 +74,15 @@ var app = builder.Build();
 
 app.Logger.LogInformation("BaseDirectory = {dir}", AppContext.BaseDirectory);
 
-var path = Path.Combine(AppContext.BaseDirectory, "DataProtection-Keys");
-app.Logger.LogInformation("KeyPath = {path}", path);
-app.Logger.LogInformation("Exists = {exists}", Directory.Exists(path));
+app.Logger.LogInformation("KeyPath = {path}", dataProtectionKeysPath);
+app.Logger.LogInformation("Exists = {exists}", Directory.Exists(dataProtectionKeysPath));
 
-foreach (var f in Directory.GetFiles(path))
+if (Directory.Exists(dataProtectionKeysPath))
 {
-    app.Logger.LogInformation("Key file = {file}", f);
+    foreach (var f in Directory.GetFiles(dataProtectionKeysPath))
+    {
+        app.Logger.LogInformation("Key file = {file}", f);
+    }
 }
 
 // if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
