@@ -8,10 +8,18 @@
     <link rel="stylesheet" href="app.css" />
     <link rel="stylesheet" href="InvoiceFlow.Web.styles.css" />
     <link rel="icon" type="image/png" href="favicon.png" />
-    <HeadOutlet />
+    <HeadOutlet @rendermode="InteractiveServer" />
 </head>
 <body>
-    <Routes />
+    <Routes @rendermode="InteractiveServer" />
+
+    <div id="blazor-error-ui">
+        An unhandled error has occurred.
+        <a href="" class="reload">Reload</a>
+        <a class="dismiss">🗙</a>
+    </div>
+
+    <script src="_framework/blazor.web.js"></script>
     <script src="js/site.js"></script>
 </body>
 </html>

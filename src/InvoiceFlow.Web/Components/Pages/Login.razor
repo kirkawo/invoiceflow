@@ -1,32 +1,38 @@
 @page "/login"
 @attribute [AllowAnonymous]
+@layout Layout.BlankLayout
 
 <PageTitle>Login - InvoiceFlow</PageTitle>
 
-<div class="auth-container">
-    <div class="auth-header">
-        <h1 class="auth-heading">InvoiceFlow</h1>
-        <p class="auth-subtitle">Sign in to continue</p>
+<div class="min-vh-100 d-flex align-items-center justify-content-center px-3">
+    <div class="auth-container">
+        <div class="auth-header">
+            <h1 class="auth-heading">InvoiceFlow</h1>
+            <p class="auth-subtitle">Sign in to continue</p>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(error))
+        {
+            <div class="alert alert-danger" role="alert">@error</div>
+        }
+
+        <form method="post" action="/auth/login">
+            <AntiforgeryToken />
+            <input type="hidden" name="returnUrl" value="@returnUrl" />
+
+            <div class="mb-3">
+                <label for="email" class="form-label">Email</label>
+                <input id="email" name="email" class="form-control" autocomplete="email" />
+            </div>
+
+            <div class="mb-3">
+                <label for="password" class="form-label">Password</label>
+                <input id="password" name="password" type="password" class="form-control" autocomplete="current-password" />
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">Sign in</button>
+        </form>
     </div>
-
-    @if (!string.IsNullOrEmpty(error))
-    {
-        <div class="alert alert-danger" role="alert">@error</div>
-    }
-
-    <form method="post" action="/auth/login">
-        <AntiforgeryToken />
-        <input type="hidden" name="returnUrl" value="@returnUrl" />
-        <div class="mb-3">
-            <label for="email" class="form-label">Email</label>
-            <input id="email" name="email" class="form-control" autocomplete="email" />
-        </div>
-        <div class="mb-3">
-            <label for="password" class="form-label">Password</label>
-            <input id="password" name="password" type="password" class="form-control" autocomplete="current-password" />
-        </div>
-        <button type="submit" class="btn btn-primary w-100">Sign in</button>
-    </form>
 </div>
 
 @code {
@@ -39,15 +45,17 @@
     private string? error;
     private string returnUrl = "/";
 
-    protected override void OnInitialized()
+    protected override void OnParametersSet()
     {
-        if (!string.IsNullOrEmpty(Error))
-        {
-            error = Error;
-        }
-        if (!string.IsNullOrEmpty(ReturnUrl))
+        error = Error;
+
+        if (!string.IsNullOrWhiteSpace(ReturnUrl) && Uri.IsWellFormedUriString(ReturnUrl, UriKind.Relative))
         {
             returnUrl = ReturnUrl;
+        }
+        else
+        {
+            returnUrl = "/";
         }
     }
 }

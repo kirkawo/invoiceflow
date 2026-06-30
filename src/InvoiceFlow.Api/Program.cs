@@ -80,11 +80,31 @@ foreach (var f in Directory.GetFiles(path))
     app.Logger.LogInformation("Key file = {file}", f);
 }
 
+// if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
+// {
+//     await using var scope = app.Services.CreateAsyncScope();
+//     var context = scope.ServiceProvider.GetRequiredService<InvoiceFlowDbContext>();
+//     await context.Database.MigrateAsync();
+// }
+
 if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
 {
     await using var scope = app.Services.CreateAsyncScope();
     var context = scope.ServiceProvider.GetRequiredService<InvoiceFlowDbContext>();
-    await context.Database.MigrateAsync();
+
+    const int maxAttempts = 10;
+    for (var attempt = 1; attempt <= maxAttempts; attempt++)
+    {
+        try
+        {
+            await context.Database.MigrateAsync();
+            break;
+        }
+        catch when (attempt < maxAttempts)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(3));
+        }
+    }
 }
 
 if (app.Environment.IsDevelopment())

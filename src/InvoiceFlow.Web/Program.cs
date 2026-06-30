@@ -1,14 +1,17 @@
 using System.Security.Claims;
 using InvoiceFlow.Application;
 using InvoiceFlow.Application.Abstractions;
-using Microsoft.AspNetCore.DataProtection;
 using InvoiceFlow.Application.Invoices;
 using InvoiceFlow.Application.Options;
 using InvoiceFlow.Infrastructure;
 using InvoiceFlow.Infrastructure.Persistence;
 using InvoiceFlow.Pdf;
 using InvoiceFlow.Web.Components;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Server;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -42,13 +45,17 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.Cookie.HttpOnly = true;
     options.ExpireTimeSpan = TimeSpan.FromHours(24);
     options.LoginPath = "/login";
+    options.LogoutPath = "/auth/logout";
+    options.AccessDeniedPath = "/login";
     options.ReturnUrlParameter = "returnUrl";
 });
 
+builder.Services.AddScoped<AuthenticationStateProvider, ServerAuthenticationStateProvider>();
 builder.Services.AddAuthorization();
 builder.Services.AddCascadingAuthenticationState();
 
-builder.Services.AddRazorComponents();
+builder.Services.AddRazorComponents()
+    .AddInteractiveServerComponents();
 
 builder.Services.AddAntiforgery(options =>
 {
@@ -58,36 +65,42 @@ builder.Services.AddAntiforgery(options =>
 
 var app = builder.Build();
 
-app.Logger.LogInformation("BaseDirectory = {dir}", AppContext.BaseDirectory);
-
-var path = Path.Combine(AppContext.BaseDirectory, "DataProtection-Keys");
-app.Logger.LogInformation("KeyPath = {path}", path);
-app.Logger.LogInformation("Exists = {exists}", Directory.Exists(path));
-
-foreach (var f in Directory.GetFiles(path))
+if (app.Environment.IsProduction())
 {
-    app.Logger.LogInformation("Key file = {file}", f);
-}
+    await using var scope = app.Services.CreateAsyncScope();
+    var context = scope.ServiceProvider.GetRequiredService<InvoiceFlowDbContext>();
 
-if (app.Environment.IsDevelopment())
-{
-    using (var scope = app.Services.CreateScope())
+    const int maxAttempts = 10;
+    for (var attempt = 1; attempt <= maxAttempts; attempt++)
     {
-        var context = scope.ServiceProvider.GetRequiredService<InvoiceFlowDbContext>();
-        var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
-
-        if (config.GetValue<bool>("SampleData:Enabled"))
+        try
         {
-            var refresh = config.GetValue<bool>("SampleData:RefreshOnStartup");
-            var append = !refresh && config.GetValue<bool>("SampleData:AppendOnStartup");
-            await InvoiceFlowSampleDataSeeder.SeedAsync(context, refresh, append);
+            await context.Database.MigrateAsync();
+            break;
+        }
+        catch when (attempt < maxAttempts)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(3));
         }
     }
 }
 
-if (!app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Error", createScopeForErrors: true);
+    using var scope = app.Services.CreateScope();
+    var context = scope.ServiceProvider.GetRequiredService<InvoiceFlowDbContext>();
+    var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+
+    if (config.GetValue<bool>("SampleData:Enabled"))
+    {
+        var refresh = config.GetValue<bool>("SampleData:RefreshOnStartup");
+        var append = !refresh && config.GetValue<bool>("SampleData:AppendOnStartup");
+        await InvoiceFlowSampleDataSeeder.SeedAsync(context, refresh, append);
+    }
+}
+else
+{
+    app.UseExceptionHandler("/error", createScopeForErrors: true);
     app.UseHsts();
 }
 
@@ -97,18 +110,22 @@ if (app.Configuration.GetValue<bool>("HttpsRedirect"))
 }
 
 app.UseStaticFiles();
+app.UseAntiforgery();
 
 app.UseAuthentication();
 app.UseAuthorization();
-
-app.UseAntiforgery();
 
 app.MapPost("/auth/login", async (HttpContext context, SignInManager<ApplicationUser> signInManager) =>
 {
     var form = await context.Request.ReadFormAsync();
     var email = form["email"].FirstOrDefault();
     var password = form["password"].FirstOrDefault();
-    var returnUrl = form["returnUrl"].FirstOrDefault() ?? "/";
+    var returnUrl = form["returnUrl"].FirstOrDefault();
+
+    if (string.IsNullOrWhiteSpace(returnUrl) || !Uri.IsWellFormedUriString(returnUrl, UriKind.Relative))
+    {
+        returnUrl = "/";
+    }
 
     if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
     {
@@ -144,7 +161,8 @@ app.MapGet("/invoices/{id:guid}/pdf", async (Guid id, InvoiceService invoiceServ
     return Results.File(pdf, "application/pdf", $"invoice-{invoice.Number}.pdf");
 }).RequireAuthorization();
 
-app.MapRazorComponents<App>();
+app.MapRazorComponents<App>()
+    .AddInteractiveServerRenderMode();
 
 app.Run();
 

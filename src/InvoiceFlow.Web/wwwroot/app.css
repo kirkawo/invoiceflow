@@ -473,3 +473,29 @@ h3 {
         overflow-x: hidden;
     }
 }
+
+#blazor-error-ui {
+    background: #fff3cd;
+    bottom: 0;
+    box-shadow: 0 -1px 8px rgba(0, 0, 0, 0.15);
+    display: none;
+    left: 0;
+    padding: 0.75rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 2000;
+    color: #664d03;
+}
+
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: 1rem;
+    top: 0.5rem;
+    text-decoration: none;
+    color: inherit;
+}
+
+#blazor-error-ui .reload {
+    margin-left: 0.75rem;
+}

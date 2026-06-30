@@ -13,22 +13,27 @@
     <div class="alert alert-danger">@error</div>
 }
 
-<EditForm Model="@model" OnValidSubmit="@HandleSubmit">
+<EditForm Model="@model" FormName="client-create" OnValidSubmit="HandleSubmit">
+    <AntiforgeryToken />
     <DataAnnotationsValidator />
+
     <div class="mb-3">
         <label for="name" class="form-label">Name</label>
         <InputText id="name" class="form-control" @bind-Value="model.Name" />
         <ValidationMessage For="@(() => model.Name)" />
     </div>
+
     <div class="mb-3">
         <label for="email" class="form-label">Email</label>
         <InputText id="email" class="form-control" @bind-Value="model.Email" />
         <ValidationMessage For="@(() => model.Email)" />
     </div>
+
     <div class="mb-3">
         <label for="company" class="form-label">Company Name</label>
         <InputText id="company" class="form-control" @bind-Value="model.CompanyName" />
     </div>
+
     <button type="submit" class="btn btn-primary" disabled="@saving">@(saving ? "Saving..." : "Create")</button>
     <a href="/clients" class="btn btn-outline-secondary ms-2">Cancel</a>
 </EditForm>
