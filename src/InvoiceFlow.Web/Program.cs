@@ -7,7 +7,11 @@ using InvoiceFlow.Infrastructure;
 using InvoiceFlow.Infrastructure.Persistence;
 using InvoiceFlow.Pdf;
 using InvoiceFlow.Web.Components;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Server;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,6 +19,10 @@ builder.Services
     .AddApplication()
     .AddInfrastructure(builder.Configuration)
     .AddPdf();
+
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(AppContext.BaseDirectory, "DataProtection-Keys")))
+    .SetApplicationName("InvoiceFlow");
 
 builder.Services.Configure<AppOptions>(builder.Configuration.GetSection(AppOptions.SectionName));
 builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection(EmailOptions.SectionName));
@@ -33,54 +41,91 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
 
 builder.Services.ConfigureApplicationCookie(options =>
 {
+    options.Cookie.Name = "InvoiceFlow.Auth";
     options.Cookie.HttpOnly = true;
     options.ExpireTimeSpan = TimeSpan.FromHours(24);
     options.LoginPath = "/login";
+    options.LogoutPath = "/auth/logout";
+    options.AccessDeniedPath = "/login";
     options.ReturnUrlParameter = "returnUrl";
 });
 
+builder.Services.AddScoped<AuthenticationStateProvider, ServerAuthenticationStateProvider>();
 builder.Services.AddAuthorization();
 builder.Services.AddCascadingAuthenticationState();
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
+builder.Services.AddAntiforgery(options =>
+{
+    options.Cookie.Name = "InvoiceFlow.Web.Antiforgery";
+    options.Cookie.HttpOnly = true;
+});
+
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsProduction())
 {
-    using (var scope = app.Services.CreateScope())
-    {
-        var context = scope.ServiceProvider.GetRequiredService<InvoiceFlowDbContext>();
-        var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+    await using var scope = app.Services.CreateAsyncScope();
+    var context = scope.ServiceProvider.GetRequiredService<InvoiceFlowDbContext>();
 
-        if (config.GetValue<bool>("SampleData:Enabled"))
+    const int maxAttempts = 10;
+    for (var attempt = 1; attempt <= maxAttempts; attempt++)
+    {
+        try
         {
-            var refresh = config.GetValue<bool>("SampleData:RefreshOnStartup");
-            var append = !refresh && config.GetValue<bool>("SampleData:AppendOnStartup");
-            await InvoiceFlowSampleDataSeeder.SeedAsync(context, refresh, append);
+            await context.Database.MigrateAsync();
+            break;
+        }
+        catch when (attempt < maxAttempts)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(3));
         }
     }
 }
 
-if (!app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Error", createScopeForErrors: true);
+    using var scope = app.Services.CreateScope();
+    var context = scope.ServiceProvider.GetRequiredService<InvoiceFlowDbContext>();
+    var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+
+    if (config.GetValue<bool>("SampleData:Enabled"))
+    {
+        var refresh = config.GetValue<bool>("SampleData:RefreshOnStartup");
+        var append = !refresh && config.GetValue<bool>("SampleData:AppendOnStartup");
+        await InvoiceFlowSampleDataSeeder.SeedAsync(context, refresh, append);
+    }
+}
+else
+{
+    app.UseExceptionHandler("/error", createScopeForErrors: true);
     app.UseHsts();
 }
 
-app.UseHttpsRedirection();
-app.UseAuthentication();
-app.UseAuthorization();
+if (app.Configuration.GetValue<bool>("HttpsRedirect"))
+{
+    app.UseHttpsRedirection();
+}
+
 app.UseStaticFiles();
 app.UseAntiforgery();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapPost("/auth/login", async (HttpContext context, SignInManager<ApplicationUser> signInManager) =>
 {
     var form = await context.Request.ReadFormAsync();
     var email = form["email"].FirstOrDefault();
     var password = form["password"].FirstOrDefault();
-    var returnUrl = form["returnUrl"].FirstOrDefault() ?? "/";
+    var returnUrl = form["returnUrl"].FirstOrDefault();
+
+    if (string.IsNullOrWhiteSpace(returnUrl) || !Uri.IsWellFormedUriString(returnUrl, UriKind.Relative))
+    {
+        returnUrl = "/";
+    }
 
     if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
     {

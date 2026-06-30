@@ -2,6 +2,12 @@ html, body {
     font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', Arial, sans-serif;
     color: #333;
     background-color: #f5f5f5;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    min-height: 100vh;
 }
 
 a, .btn-link {
@@ -50,6 +56,194 @@ a, .btn-link {
     padding: 4px 12px;
 }
 
+/* Global app shell */
+
+.app-shell {
+    min-height: 100vh;
+}
+
+.auth-layout {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 16px;
+    box-sizing: border-box;
+}
+
+.top-app-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 64px;
+    background-color: #fff;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+    z-index: 1000;
+    gap: 4px;
+}
+
+.menu-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: none;
+    background: transparent;
+    border-radius: 50%;
+    cursor: pointer;
+    color: #555;
+    flex-shrink: 0;
+    padding: 0;
+}
+
+.menu-btn:hover {
+    background-color: rgba(0, 0, 0, 0.06);
+}
+
+.menu-btn:focus-visible {
+    outline: 2px solid #1a73e8;
+    outline-offset: 2px;
+}
+
+.menu-btn svg {
+    fill: currentColor;
+}
+
+.app-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #1a1a1a;
+    white-space: nowrap;
+}
+
+.top-bar-actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+}
+
+.top-bar-actions form {
+    margin: 0;
+}
+
+.btn-logout {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border: none;
+    background: transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    color: #666;
+    font-size: 0.875rem;
+    transition: background-color 0.15s, color 0.15s;
+}
+
+.btn-logout:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+    color: #1a1a1a;
+}
+
+.btn-logout:focus-visible {
+    outline: 2px solid #1a73e8;
+    outline-offset: 2px;
+}
+
+.btn-logout svg {
+    fill: currentColor;
+    flex-shrink: 0;
+}
+
+.body-wrapper {
+    display: flex;
+    padding-top: 64px;
+    min-height: 100vh;
+    box-sizing: border-box;
+}
+
+.side-drawer {
+    width: 240px;
+    flex-shrink: 0;
+    align-self: flex-start;
+    position: sticky;
+    top: 64px;
+    height: calc(100vh - 64px);
+    overflow-y: auto;
+    background-color: #fafafa;
+    border-right: 1px solid #e8e8e8;
+}
+
+.drawer-backdrop {
+    display: none;
+}
+
+.main-content {
+    flex: 1;
+    min-width: 0;
+    background-color: #fff;
+}
+
+.content {
+    padding: 24px 32px;
+    max-width: 1200px;
+}
+
+/* Navigation menu */
+
+.nav-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-top: 12px;
+}
+
+.nav-section-label {
+    padding: 12px 20px 6px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #999;
+}
+
+.nav-item {
+    padding: 0 8px;
+}
+
+.nav-item .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    color: #555;
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: background-color 0.15s, color 0.15s;
+}
+
+.nav-item .nav-link:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+    color: #1a1a1a;
+}
+
+.nav-item .nav-link.active {
+    background-color: #e8f0fe;
+    color: #1a73e8;
+}
+
+.nav-item .nav-link svg {
+    fill: currentColor;
+    flex-shrink: 0;
+}
+
 .auth-container {
     width: 100%;
     max-width: 380px;
@@ -71,10 +265,6 @@ a, .btn-link {
     font-size: 0.9rem;
     color: #777;
     margin: 6px 0 0;
-}
-
-.content {
-    padding: 0;
 }
 
 h1 {
@@ -163,7 +353,7 @@ h3 {
     white-space: pre-wrap;
 }
 
-/* ── Public invoice page — document-style presentation ── */
+/* Public invoice page */
 
 .public-invoice-page {
     min-height: 100vh;
@@ -183,19 +373,6 @@ h3 {
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
     padding: 48px 56px;
 }
-
-@media (max-width: 600px) {
-    .public-invoice-page {
-        padding: 16px 12px;
-    }
-
-    .public-invoice-card {
-        padding: 28px 20px;
-        border-radius: 8px;
-    }
-}
-
-/* ── Header ── */
 
 .pi-title {
     font-size: 1.75rem;
@@ -229,16 +406,12 @@ h3 {
     line-height: 1.6;
 }
 
-/* ── Dividers ── */
-
 .pi-rule {
     border: none;
     height: 1px;
     background: #e0e0e0;
     margin: 22px 0;
 }
-
-/* ── Labels & values ── */
 
 .pi-label {
     font-size: 0.72rem;
@@ -264,8 +437,6 @@ h3 {
 .pi-table-gap {
     height: 20px;
 }
-
-/* ── Table ── */
 
 .pi-table {
     width: 100%;
@@ -293,8 +464,6 @@ h3 {
     border-bottom: none;
 }
 
-/* ── Total ── */
-
 .pi-total-row {
     display: flex;
     justify-content: flex-end;
@@ -317,8 +486,6 @@ h3 {
     color: #1a1a2e;
 }
 
-/* ── Notes ── */
-
 .pi-notes {
     margin-top: 24px;
     padding-top: 20px;
@@ -330,8 +497,6 @@ h3 {
     line-height: 1.7;
 }
 
-/* ── Footer ── */
-
 .pi-footer {
     margin-top: 32px;
     text-align: center;
@@ -339,22 +504,6 @@ h3 {
     color: #aaa;
     border-top: 1px solid #e0e0e0;
     padding-top: 20px;
-}
-
-/* ── Print ── */
-
-@media print {
-    .public-invoice-page {
-        padding: 0;
-        background: #fff;
-        min-height: auto;
-    }
-
-    .public-invoice-card {
-        box-shadow: none;
-        border-radius: 0;
-        padding: 40px;
-    }
 }
 
 .form-control, .form-select {
@@ -402,7 +551,7 @@ h3 {
 }
 
 .blazor-error-boundary::after {
-    content: "An error has occurred."
+    content: "An error has occurred.";
 }
 
 .darker-border-checkbox.form-check-input {
@@ -410,6 +559,7 @@ h3 {
 }
 
 /* Invoice cards for mobile */
+
 .invoice-card {
     border: 1px solid #e8e8e8;
     border-radius: 10px;
@@ -464,12 +614,129 @@ h3 {
     white-space: nowrap;
 }
 
+/* Responsive */
+
+@media (max-width: 991.98px) {
+    .app-shell {
+        overflow-x: hidden;
+    }
+
+    .top-app-bar {
+        height: 56px;
+    }
+
+    .menu-btn {
+        display: flex;
+    }
+
+    .app-title {
+        font-size: 1.1rem;
+    }
+
+    .body-wrapper {
+        padding-top: 56px;
+        min-height: calc(100vh - 56px);
+    }
+
+    .side-drawer {
+        position: fixed;
+        top: 0;
+        left: -280px;
+        width: 280px;
+        height: 100vh;
+        z-index: 2000;
+        transition: left 0.2s ease;
+        box-shadow: none;
+        border-right: none;
+        align-self: auto;
+    }
+
+    .side-drawer.drawer-open {
+        left: 0;
+        box-shadow: 4px 0 16px rgba(0, 0, 0, 0.15);
+    }
+
+    .drawer-backdrop.visible {
+        display: block;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.3);
+        z-index: 1500;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .content {
+        padding: 16px;
+    }
+
+    .logout-label {
+        display: none;
+    }
+}
+
+@media (max-width: 600px) {
+    .public-invoice-page {
+        padding: 16px 12px;
+    }
+
+    .public-invoice-card {
+        padding: 28px 20px;
+        border-radius: 8px;
+    }
+}
+
 @media (max-width: 575.98px) {
+    html,
     body {
         overflow-x: hidden;
     }
 
-    html {
-        overflow-x: hidden;
+    .content {
+        padding: 12px;
     }
+}
+
+@media print {
+    .public-invoice-page {
+        padding: 0;
+        background: #fff;
+        min-height: auto;
+    }
+
+    .public-invoice-card {
+        box-shadow: none;
+        border-radius: 0;
+        padding: 40px;
+    }
+}
+
+/* Blazor error UI */
+
+#blazor-error-ui {
+    background: #fff3cd;
+    bottom: 0;
+    box-shadow: 0 -1px 8px rgba(0, 0, 0, 0.15);
+    display: none;
+    left: 0;
+    padding: 0.75rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 2000;
+    color: #664d03;
+}
+
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: 1rem;
+    top: 0.5rem;
+    text-decoration: none;
+    color: inherit;
+}
+
+#blazor-error-ui .reload {
+    margin-left: 0.75rem;
 }

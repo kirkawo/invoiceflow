@@ -102,10 +102,14 @@ docker compose -f docker-compose.prod.yml up -d
 docker compose -f docker-compose.prod.yml logs -f
 ```
 
+### Health checks
+
+The Api exposes `GET /health` (returns `{"status":"healthy"}`) for container health checks and monitoring. The stack's startup order is `db → api → web` — Web waits for Api to complete migrations before starting.
+
 ### Migration strategy
 
 - The **Api** service runs EF Core migrations automatically on startup (both Development and Production).
-- The **Web** service does **not** run migrations — it relies on the Api having applied them, or handles migration idempotency independently.
+- The **Web** service does **not** run migrations — it relies on the Api having applied them.
 - Seed data (default workspace + admin user) only runs in `Development` environment.
 
 ### Environment variables
@@ -125,6 +129,12 @@ docker compose -f docker-compose.prod.yml logs -f
 | db     | — (internal only)   | 5432 |
 | api    | 5000                | 8080 |
 | web    | 5001                | 8080 |
+
+### Data Protection
+
+Authentication cookies and antiforgery tokens are encrypted using ASP.NET Core Data Protection. Keys are persisted on a Docker named volume (`dataprotection_keys`) shared between Api and Web, mounted at `/app/DataProtection-Keys` in each container. This keeps token decryption stable across restarts.
+
+When switching between stacks or clearing volumes locally, delete browser cookies for `localhost:5000` and `localhost:5001` to avoid stale-key errors.
 
 ## Out of scope for MVP
 

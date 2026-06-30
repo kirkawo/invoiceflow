@@ -11,7 +11,7 @@ services:
       timeout: 5s
       retries: 5
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata_prod:/var/lib/postgresql/data
     restart: unless-stopped
 
   api:
@@ -21,11 +21,20 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       Database__ConnectionString: Host=db;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
       App__BaseUrl: ${API_BASE_URL}
       App__PublicBaseUrl: ${APP_PUBLIC_BASE_URL}
+      Bootstrap__Enabled: ${BOOTSTRAP_ENABLED}
+      Bootstrap__AdminEmail: ${BOOTSTRAP_ADMIN_EMAIL}
+      Bootstrap__AdminPassword: ${BOOTSTRAP_ADMIN_PASSWORD}
       Email__SmtpHost: ${EMAIL_HOST}
       Email__SmtpPort: ${EMAIL_PORT}
       Email__FromAddress: ${EMAIL_FROM}
@@ -34,6 +43,8 @@ services:
       Email__UseSsl: ${EMAIL_USE_SSL}
     ports:
       - "${API_PORT:-5000}:8080"
+    volumes:
+      - dataprotection_keys:/app/DataProtection-Keys
     restart: unless-stopped
 
   web:
@@ -42,6 +53,8 @@ services:
       dockerfile: src/InvoiceFlow.Web/Dockerfile
     depends_on:
       db:
+        condition: service_healthy
+      api:
         condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: Production
@@ -54,9 +67,13 @@ services:
       Email__Username: ${EMAIL_USERNAME}
       Email__Password: ${EMAIL_PASSWORD}
       Email__UseSsl: ${EMAIL_USE_SSL}
+      Logging__LogLevel__Microsoft.AspNetCore.DataProtection: Trace
     ports:
       - "${WEB_PORT:-5001}:8080"
+    volumes:
+      - dataprotection_keys:/app/DataProtection-Keys
     restart: unless-stopped
 
 volumes:
-  pgdata:
+  pgdata_prod:
+  dataprotection_keys:

@@ -3,13 +3,24 @@
         <Found Context="routeData">
             <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
                 <NotAuthorized>
-                    <RedirectToLogin />
+                    <LayoutView Layout="typeof(Layout.BlankLayout)">
+                        <RedirectToLogin />
+                    </LayoutView>
                 </NotAuthorized>
-                <Authorizing>
-                    <p>Authorizing...</p>
-                </Authorizing>
             </AuthorizeRouteView>
             <FocusOnNavigate RouteData="routeData" Selector="h1" />
         </Found>
+
+        <NotFound>
+            <LayoutView Layout="typeof(Layout.BlankLayout)">
+                <PageTitle>Not found</PageTitle>
+
+                <div class="auth-layout">
+                    <div class="alert alert-danger" role="alert">
+                        Sorry, there's nothing at this address.
+                    </div>
+                </div>
+            </LayoutView>
+        </NotFound>
     </Router>
 </CascadingAuthenticationState>
