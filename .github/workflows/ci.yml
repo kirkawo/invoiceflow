@@ -19,7 +19,8 @@ jobs:
       DOTNET_ENVIRONMENT: Testing
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Setup .NET 8 SDK
         uses: actions/setup-dotnet@v4
@@ -57,7 +58,23 @@ jobs:
     needs: build-and-test
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create CI env file
+        run: |
+          cat > .env <<EOF
+          POSTGRES_DB=invoiceflow
+          POSTGRES_USER=postgres
+          POSTGRES_PASSWORD=postgres
+          CONNECTIONSTRINGS__DEFAULTCONNECTION=Host=db;Port=5432;Database=invoiceflow;Username=postgres;Password=postgres
+          ASPNETCORE_ENVIRONMENT=Production
+          DOTNET_ENVIRONMENT=Production
+          HTTPSREDIRECT=false
+          BOOTSTRAP_ENABLED=true
+          BOOTSTRAP_ADMIN_EMAIL=admin@invoiceflow.local
+          BOOTSTRAP_ADMIN_PASSWORD=Admin123!
+          EOF
 
       - name: Build Docker image (Api)
         run: docker build -t invoiceflow-api:ci -f src/InvoiceFlow.Api/Dockerfile .
@@ -67,3 +84,44 @@ jobs:
 
       - name: Validate docker-compose.prod.yml
         run: docker compose -f docker-compose.prod.yml config
+
+      - name: Start production-like stack
+        run: docker compose -f docker-compose.prod.yml up -d --build
+
+      - name: Wait for containers
+        run: |
+          for i in {1..30}; do
+            if docker compose -f docker-compose.prod.yml ps; then
+              sleep 2
+            fi
+          done
+
+      - name: Check container status
+        run: docker compose -f docker-compose.prod.yml ps
+
+      - name: Smoke test web static assets
+        run: |
+          curl -f http://localhost:5001/ || exit 1
+          curl -f http://localhost:5001/app.css || exit 1
+          curl -f http://localhost:5001/bootstrap/bootstrap.min.css || exit 1
+          curl -f http://localhost:5001/_framework/blazor.web.js || exit 1
+
+      - name: Smoke test API health
+        run: |
+          curl -f http://localhost:5000/health || exit 1
+
+      - name: Dump logs on failure
+        if: failure()
+        run: |
+          echo "===== docker compose ps ====="
+          docker compose -f docker-compose.prod.yml ps
+          echo "===== web logs ====="
+          docker compose -f docker-compose.prod.yml logs web
+          echo "===== api logs ====="
+          docker compose -f docker-compose.prod.yml logs api
+          echo "===== db logs ====="
+          docker compose -f docker-compose.prod.yml logs db
+
+      - name: Shutdown stack
+        if: always()
+        run: docker compose -f docker-compose.prod.yml down -v
