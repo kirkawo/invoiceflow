@@ -1,14 +1,14 @@
-@page "/login"
+@page "/register"
 @attribute [AllowAnonymous]
 @layout Layout.BlankLayout
 
-<PageTitle>Login - InvoiceFlow</PageTitle>
+<PageTitle>Create account - InvoiceFlow</PageTitle>
 
 <div class="min-vh-100 d-flex align-items-center justify-content-center px-3">
     <div class="auth-container">
         <div class="auth-header">
             <h1 class="auth-heading">InvoiceFlow</h1>
-            <p class="auth-subtitle">Sign in to continue</p>
+            <p class="auth-subtitle">Create your account</p>
         </div>
 
         @if (!string.IsNullOrWhiteSpace(error))
@@ -16,25 +16,31 @@
             <div class="alert alert-danger" role="alert">@error</div>
         }
 
-        <form method="post" action="/auth/login">
+        <form method="post" action="/auth/register">
             <AntiforgeryToken />
             <input type="hidden" name="returnUrl" value="@returnUrl" />
 
             <div class="mb-3">
                 <label for="email" class="form-label">Email</label>
-                <input id="email" name="email" class="form-control" autocomplete="email" />
+                <input id="email" name="email" type="email" class="form-control" autocomplete="email" required />
             </div>
 
             <div class="mb-3">
                 <label for="password" class="form-label">Password</label>
-                <input id="password" name="password" type="password" class="form-control" autocomplete="current-password" />
+                <input id="password" name="password" type="password" class="form-control" autocomplete="new-password" required minlength="6" />
+                <div class="form-text">At least 6 characters.</div>
             </div>
 
-            <button type="submit" class="btn btn-primary w-100">Sign in</button>
+            <div class="mb-3">
+                <label for="confirmPassword" class="form-label">Confirm password</label>
+                <input id="confirmPassword" name="confirmPassword" type="password" class="form-control" autocomplete="new-password" required />
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">Create account</button>
         </form>
 
         <div class="auth-footer">
-            Don't have an account? <a href="/register">Create one</a>
+            Already have an account? <a href="/login">Sign in</a>
         </div>
     </div>
 </div>

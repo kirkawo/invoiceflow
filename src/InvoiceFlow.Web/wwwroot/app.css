@@ -267,6 +267,49 @@ a, .btn-link {
     margin: 6px 0 0;
 }
 
+.auth-footer {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.landing-container {
+    width: 100%;
+    max-width: 420px;
+    text-align: center;
+}
+
+.landing-header {
+    margin-bottom: 32px;
+}
+
+.landing-heading {
+    font-size: 2.25rem;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin: 0 0 12px;
+}
+
+.landing-subtitle {
+    font-size: 1.05rem;
+    color: #666;
+    line-height: 1.6;
+    margin: 0;
+}
+
+.landing-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.landing-actions .btn-lg {
+    padding: 12px 24px;
+    font-size: 1rem;
+    border-radius: 10px;
+}
+
 h1 {
     font-size: 1.75rem;
     font-weight: 600;

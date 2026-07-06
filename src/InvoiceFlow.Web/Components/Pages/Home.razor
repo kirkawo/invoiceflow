@@ -1,97 +1,123 @@
 ﻿@page "/"
-@attribute [Authorize]
+@using Microsoft.AspNetCore.Components.Authorization
 
 @inject ClientService ClientService
+@inject AuthenticationStateProvider AuthStateProvider
 
-<PageTitle>Dashboard - InvoiceFlow</PageTitle>
+<AuthorizeView>
+    <Authorized>
+        <PageTitle>Dashboard - InvoiceFlow</PageTitle>
 
-<div class="page-header">
-    <h1 class="mb-0">Dashboard</h1>
-</div>
+        <div class="page-header">
+            <h1 class="mb-0">Dashboard</h1>
+        </div>
 
-@if (error is not null)
-{
-    <div class="alert alert-danger">@error</div>
-}
+        @if (error is not null)
+        {
+            <div class="alert alert-danger">@error</div>
+        }
 
-@if (clients is null)
-{
-    <p class="text-muted">Loading...</p>
-}
-else
-{
-    <div class="row g-3 mb-4">
-        <div class="col-md-4">
-            <div class="card text-bg-primary">
-                <div class="card-body">
-                    <div class="text-white-50 small text-uppercase fw-semibold mb-1">Total Clients</div>
-                    <p class="display-6 mb-0">@clients.Count</p>
+        @if (clients is null)
+        {
+            <p class="text-muted">Loading...</p>
+        }
+        else
+        {
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <div class="card text-bg-primary">
+                        <div class="card-body">
+                            <div class="text-white-50 small text-uppercase fw-semibold mb-1">Total Clients</div>
+                            <p class="display-6 mb-0">@clients.Count</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex flex-wrap gap-2 mb-4">
+                <a href="/clients" class="btn btn-outline-primary">View Clients</a>
+                <a href="/clients/new" class="btn btn-primary">Create Client</a>
+                <a href="/invoices/new" class="btn btn-success">Create Invoice</a>
+            </div>
+
+            @if (clients.Count == 0)
+            {
+                <div class="card">
+                    <div class="card-body text-center py-5">
+                        <p class="text-muted mb-2">No clients yet.</p>
+                        <a href="/clients/new" class="btn btn-primary">Create your first client</a>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="card">
+                    <div class="card-body p-0">
+                        <div class="px-3 pt-3 pb-2">
+                            <h3 class="mb-0">Recent Clients</h3>
+                        </div>
+                        <table class="table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Company</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var client in clients)
+                                {
+                                    <tr>
+                                        <td>@client.Name</td>
+                                        <td>@client.Email</td>
+                                        <td>@client.CompanyName</td>
+                                        <td><a href="/clients/@client.Id/invoices" class="btn btn-sm btn-outline-secondary">Invoices</a></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+        }
+
+        @code {
+            private IReadOnlyList<ClientDto>? clients;
+            private string? error;
+
+            protected override async Task OnInitializedAsync()
+            {
+                try
+                {
+                    clients = await ClientService.GetClientsAsync();
+                }
+                catch (Exception ex)
+                {
+                    error = ex.Message;
+                }
+            }
+        }
+    </Authorized>
+
+    <NotAuthorized>
+        <PageTitle>InvoiceFlow</PageTitle>
+
+        <div class="min-vh-100 d-flex align-items-center justify-content-center px-3">
+            <div class="landing-container">
+                <div class="landing-header">
+                    <h1 class="landing-heading">InvoiceFlow</h1>
+                    <p class="landing-subtitle">
+                        Simple invoicing for small businesses.
+                        Create, send, and manage invoices in minutes.
+                    </p>
+                </div>
+
+                <div class="landing-actions">
+                    <a href="/register" class="btn btn-primary btn-lg w-100 mb-2">Get started</a>
+                    <a href="/login" class="btn btn-outline-primary btn-lg w-100">Sign in</a>
                 </div>
             </div>
         </div>
-    </div>
-
-    <div class="d-flex flex-wrap gap-2 mb-4">
-        <a href="/clients" class="btn btn-outline-primary">View Clients</a>
-        <a href="/clients/new" class="btn btn-primary">Create Client</a>
-        <a href="/invoices/new" class="btn btn-success">Create Invoice</a>
-    </div>
-
-    @if (clients.Count == 0)
-    {
-        <div class="card">
-            <div class="card-body text-center py-5">
-                <p class="text-muted mb-2">No clients yet.</p>
-                <a href="/clients/new" class="btn btn-primary">Create your first client</a>
-            </div>
-        </div>
-    }
-    else
-    {
-        <div class="card">
-            <div class="card-body p-0">
-                <div class="px-3 pt-3 pb-2">
-                    <h3 class="mb-0">Recent Clients</h3>
-                </div>
-                <table class="table mb-0">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Company</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var client in clients)
-                        {
-                            <tr>
-                                <td>@client.Name</td>
-                                <td>@client.Email</td>
-                                <td>@client.CompanyName</td>
-                                <td><a href="/clients/@client.Id/invoices" class="btn btn-sm btn-outline-secondary">Invoices</a></td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    }
-}
-
-@code {
-    private IReadOnlyList<ClientDto>? clients;
-    private string? error;
-
-    protected override async Task OnInitializedAsync()
-    {
-        try
-        {
-            clients = await ClientService.GetClientsAsync();
-        }
-        catch (Exception ex)
-        {
-            error = ex.Message;
-        }
-    }
-}
+    </NotAuthorized>
+</AuthorizeView>
