@@ -34,7 +34,13 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IClientRepository, EfClientRepository>();
         services.AddScoped<IInvoiceRepository, EfInvoiceRepository>();
         services.AddScoped<IReminderRepository, EfReminderRepository>();
-        services.AddScoped<IEmailSender, ConsoleEmailSender>();
+        services.AddScoped<IEmailSender>(sp =>
+        {
+            var options = sp.GetRequiredService<IOptions<EmailOptions>>().Value;
+            return string.IsNullOrWhiteSpace(options.SmtpHost)
+                ? ActivatorUtilities.CreateInstance<ConsoleEmailSender>(sp)
+                : ActivatorUtilities.CreateInstance<SmtpEmailSender>(sp);
+        });
         services.AddHostedService<AutomaticReminderBackgroundService>();
 
         return services;
