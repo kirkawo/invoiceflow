@@ -99,13 +99,13 @@ public class InvoiceDeliveryService
         {
             $"Dear {client.Name},",
             "",
-            $"Please find your invoice {invoice.Number} attached below.",
+            $"Your invoice {invoice.Number} is available at the secure link below.",
             "",
             $"Amount: {invoice.Total:F2} {invoice.Currency}",
             $"Issue date: {invoice.IssueDateUtc:yyyy-MM-dd}",
             $"Due date: {invoice.DueDateUtc:yyyy-MM-dd}",
             "",
-            $"You can view the full invoice online at:",
+            $"View your invoice:",
             publicUrl,
         };
 
