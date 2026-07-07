@@ -12,6 +12,14 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+if (builder.Environment.IsDevelopment())
+{
+    builder.Configuration.AddJsonFile(
+        "appsettings.local.json",
+        optional: true,
+        reloadOnChange: true);
+}
+
 builder.Services
     .AddApplication()
     .AddInfrastructure(builder.Configuration)
