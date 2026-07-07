@@ -1,28 +1,20 @@
-using System.Net;
-using System.Net.Mail;
 using InvoiceFlow.Application.Abstractions;
 using InvoiceFlow.Application.Options;
+using MailKit.Net.Smtp;
+using MailKit.Security;
 using Microsoft.Extensions.Logging;
+using MimeKit;
 
 namespace InvoiceFlow.Infrastructure.Email;
 
 public class SmtpEmailSender : IEmailSender
 {
-    private readonly SmtpOptions _smtp;
+    private readonly EmailOptions _options;
     private readonly ILogger<SmtpEmailSender> _logger;
 
     public SmtpEmailSender(EmailOptions options, ILogger<SmtpEmailSender> logger)
     {
-        _smtp = new SmtpOptions
-        {
-            Host = options.SmtpHost,
-            Port = options.SmtpPort,
-            FromAddress = options.FromAddress,
-            FromName = options.FromName,
-            Username = options.Username,
-            Password = options.Password,
-            UseSsl = options.UseSsl,
-        };
+        _options = options;
         _logger = logger;
     }
 
@@ -30,34 +22,29 @@ public class SmtpEmailSender : IEmailSender
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(_smtp.Host))
+            if (string.IsNullOrWhiteSpace(_options.SmtpHost))
             {
                 _logger.LogWarning("SMTP not configured — email not sent. To={To}, Subject={Subject}", to, subject);
                 return false;
             }
 
-            using var client = new SmtpClient(_smtp.Host, _smtp.Port)
-            {
-                EnableSsl = _smtp.UseSsl,
-                DeliveryMethod = SmtpDeliveryMethod.Network,
-            };
+            using var client = new SmtpClient();
 
-            if (!string.IsNullOrWhiteSpace(_smtp.Username))
+            await client.ConnectAsync(_options.SmtpHost, _options.SmtpPort, SecureSocketOptions.StartTls, cancellationToken);
+
+            if (!string.IsNullOrWhiteSpace(_options.Username))
             {
-                client.Credentials = new NetworkCredential(_smtp.Username, _smtp.Password);
+                await client.AuthenticateAsync(_options.Username, _options.Password, cancellationToken);
             }
 
-            using var message = new MailMessage
-            {
-                From = new MailAddress(_smtp.FromAddress, _smtp.FromName),
-                Subject = subject,
-                Body = body,
-                IsBodyHtml = false,
-            };
+            var message = new MimeMessage();
+            message.From.Add(new MailboxAddress(_options.FromName, _options.FromAddress));
+            message.To.Add(new MailboxAddress("", to));
+            message.Subject = subject;
+            message.Body = new TextPart("plain") { Text = body };
 
-            message.To.Add(to);
-
-            await client.SendMailAsync(message, cancellationToken);
+            await client.SendAsync(message, cancellationToken);
+            await client.DisconnectAsync(true, cancellationToken);
 
             _logger.LogInformation("Email sent: To={To}, Subject={Subject}", to, subject);
             return true;
@@ -67,16 +54,5 @@ public class SmtpEmailSender : IEmailSender
             _logger.LogError(ex, "Failed to send email: To={To}, Subject={Subject}", to, subject);
             return false;
         }
-    }
-
-    private sealed record SmtpOptions
-    {
-        public string Host { get; init; } = string.Empty;
-        public int Port { get; init; } = 587;
-        public string FromAddress { get; init; } = string.Empty;
-        public string FromName { get; init; } = string.Empty;
-        public string Username { get; init; } = string.Empty;
-        public string Password { get; init; } = string.Empty;
-        public bool UseSsl { get; init; } = true;
     }
 }
