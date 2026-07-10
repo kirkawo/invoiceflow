@@ -11,6 +11,7 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.*" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.*" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.*" />
+    <PackageReference Include="MailKit" Version="4.17.0" />
   </ItemGroup>
 
   <PropertyGroup>

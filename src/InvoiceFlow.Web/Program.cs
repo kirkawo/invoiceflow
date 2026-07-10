@@ -3,6 +3,7 @@ using InvoiceFlow.Application;
 using InvoiceFlow.Application.Abstractions;
 using InvoiceFlow.Application.Invoices;
 using InvoiceFlow.Application.Options;
+using InvoiceFlow.Domain;
 using InvoiceFlow.Infrastructure;
 using InvoiceFlow.Infrastructure.Persistence;
 using InvoiceFlow.Pdf;
@@ -14,6 +15,14 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Server;
 
 var builder = WebApplication.CreateBuilder(args);
+
+if (builder.Environment.IsDevelopment())
+{
+    builder.Configuration.AddJsonFile(
+        "appsettings.local.json",
+        optional: true,
+        reloadOnChange: true);
+}
 
 builder.Services
     .AddApplication()
@@ -114,6 +123,65 @@ app.UseAntiforgery();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.MapPost("/auth/register", async (HttpContext context, UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager, InvoiceFlowDbContext db) =>
+{
+    var form = await context.Request.ReadFormAsync();
+    var email = form["email"].FirstOrDefault();
+    var password = form["password"].FirstOrDefault();
+    var confirmPassword = form["confirmPassword"].FirstOrDefault();
+    var returnUrl = form["returnUrl"].FirstOrDefault();
+
+    if (string.IsNullOrWhiteSpace(returnUrl) || !Uri.IsWellFormedUriString(returnUrl, UriKind.Relative))
+    {
+        returnUrl = "/";
+    }
+
+    if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+    {
+        return Results.Redirect($"/register?error={Uri.EscapeDataString("Email and password are required.")}&returnUrl={Uri.EscapeDataString(returnUrl)}");
+    }
+
+    if (password != confirmPassword)
+    {
+        return Results.Redirect($"/register?error={Uri.EscapeDataString("Passwords do not match.")}&returnUrl={Uri.EscapeDataString(returnUrl)}");
+    }
+
+    if (password.Length < 6)
+    {
+        return Results.Redirect($"/register?error={Uri.EscapeDataString("Password must be at least 6 characters.")}&returnUrl={Uri.EscapeDataString(returnUrl)}");
+    }
+
+    var existingUser = await userManager.FindByEmailAsync(email);
+    if (existingUser is not null)
+    {
+        return Results.Redirect($"/register?error={Uri.EscapeDataString("An account with this email already exists.")}&returnUrl={Uri.EscapeDataString(returnUrl)}");
+    }
+
+    var workspace = new Workspace($"{email}'s Workspace");
+    db.Workspaces.Add(workspace);
+    await db.SaveChangesAsync();
+
+    var user = new ApplicationUser
+    {
+        UserName = email,
+        Email = email,
+        WorkspaceId = workspace.Id,
+    };
+
+    var result = await userManager.CreateAsync(user, password);
+    if (!result.Succeeded)
+    {
+        db.Workspaces.Remove(workspace);
+        await db.SaveChangesAsync();
+
+        var errors = string.Join(" ", result.Errors.Select(e => e.Description));
+        return Results.Redirect($"/register?error={Uri.EscapeDataString(errors)}&returnUrl={Uri.EscapeDataString(returnUrl)}");
+    }
+
+    await signInManager.SignInAsync(user, true);
+    return Results.Redirect(returnUrl);
+});
 
 app.MapPost("/auth/login", async (HttpContext context, SignInManager<ApplicationUser> signInManager) =>
 {
