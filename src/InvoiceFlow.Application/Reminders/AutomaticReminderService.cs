@@ -72,15 +72,14 @@ public class AutomaticReminderService
             if (daysOverdue < _options.OverdueThresholdDays)
                 return false;
         }
-        else if (autoReminders.Count == 1)
+        else
         {
-            var firstSent = autoReminders[0].SentAtUtc;
-            if ((utcNow - firstSent).TotalDays < _options.CooldownDays)
+            if (autoReminders.Count >= _options.MaxAutoReminders)
                 return false;
-        }
-        else if (autoReminders.Count >= _options.MaxAutoReminders)
-        {
-            return false;
+
+            var lastSent = autoReminders[^1].SentAtUtc;
+            if ((utcNow - lastSent).TotalDays < _options.CooldownDays)
+                return false;
         }
 
         var subject = $"Automatic Payment Reminder: Invoice {invoice.Number}";

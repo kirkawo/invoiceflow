@@ -164,11 +164,11 @@ public static class InvoiceEndpoints
             return Results.File(pdf, "application/pdf", $"invoice-{invoiceDto.Number}.pdf");
         });
 
-        group.MapPost("/{id:guid}/reminders/manual", async (Guid id, ManualReminderService reminderService) =>
+        group.MapPost("/{id:guid}/reminders/manual", async (Guid id, string? message, ManualReminderService reminderService) =>
         {
             try
             {
-                var reminder = await reminderService.SendManualReminderAsync(id);
+                var reminder = await reminderService.SendManualReminderAsync(id, message);
                 return Results.Created($"/api/invoices/{id}/reminders", reminder);
             }
             catch (InvalidOperationException ex)

@@ -299,6 +299,11 @@ else
             <div class="alert @reminderFeedbackCssClass py-2 small">@reminderFeedback</div>
         }
 
+        <div class="mb-3">
+            <label class="form-label">Message (optional)</label>
+            <textarea class="form-control" rows="2" @bind="ReminderCustomMessage"></textarea>
+        </div>
+
         <div class="d-flex align-items-center gap-2 mb-3">
             @{
                 var canSend = invoice.Status == InvoiceStatus.Overdue && !string.IsNullOrWhiteSpace(clientEmail);
@@ -409,6 +414,7 @@ else
     private bool loadingDeliveries;
     private IReadOnlyList<ReminderDto> deliveries = [];
     private string DeliveryCustomMessage = string.Empty;
+    private string ReminderCustomMessage = string.Empty;
 
     private string NewDescription = string.Empty;
     private decimal NewQuantity = 1;
@@ -640,9 +646,10 @@ else
         reminderFeedback = null;
         try
         {
-            await ReminderService.SendManualReminderAsync(invoice.Id);
+            await ReminderService.SendManualReminderAsync(invoice.Id, string.IsNullOrWhiteSpace(ReminderCustomMessage) ? null : ReminderCustomMessage);
             reminderFeedback = "Reminder sent successfully.";
             reminderFeedbackCssClass = "alert-success";
+            ReminderCustomMessage = string.Empty;
             await LoadRemindersAsync();
         }
         catch (InvalidOperationException ex)

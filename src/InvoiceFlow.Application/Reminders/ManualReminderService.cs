@@ -27,6 +27,7 @@ public class ManualReminderService
 
     public async Task<ReminderDto> SendManualReminderAsync(
         Guid invoiceId,
+        string? message = null,
         CancellationToken cancellationToken = default)
     {
         var invoice = await _invoiceRepository.GetByIdAsync(invoiceId, cancellationToken)
@@ -46,6 +47,9 @@ public class ManualReminderService
 
         var subject = $"Payment Reminder: Invoice {invoice.Number}";
         var body = $"Dear {client.Name},\n\nThis is a reminder that Invoice {invoice.Number} for {invoice.Total:F2} {invoice.Currency} is overdue.\n\nDue date: {invoice.DueDateUtc:yyyy-MM-dd}\n\nPlease arrange payment at your earliest convenience.\n\nThank you.";
+
+        if (!string.IsNullOrWhiteSpace(message))
+            body += $"\n\n{message}";
 
         var success = await _emailSender.TrySendAsync(client.Email, subject, body, cancellationToken);
 
