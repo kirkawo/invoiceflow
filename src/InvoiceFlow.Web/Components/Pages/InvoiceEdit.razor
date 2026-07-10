@@ -247,7 +247,7 @@ else
         {
             <p class="text-muted small">Loading delivery history...</p>
         }
-        else if (deliveries.Count > 0)
+        else
         {
             <h5 class="mb-2">Delivery History</h5>
             <div class="table-responsive">
@@ -261,6 +261,10 @@ else
                         </tr>
                     </thead>
                     <tbody>
+                        @if (deliveries.Count == 0)
+                        {
+                            <tr><td colspan="4" class="text-muted text-center">No entries yet.</td></tr>
+                        }
                         @foreach (var d in deliveries)
                         {
                             <tr>
@@ -272,7 +276,7 @@ else
                                     }
                                     else
                                     {
-                                        <span class="badge bg-danger" title="@d.FailureReason">Failed</span>
+                                        <span class="badge bg-danger">Failed</span>
                                     }
                                 </td>
                                 <td>@d.RecipientEmail</td>
@@ -282,10 +286,6 @@ else
                     </tbody>
                 </table>
             </div>
-        }
-        else
-        {
-            <p class="text-muted small">No emails sent yet.</p>
         }
     }
 
@@ -338,7 +338,7 @@ else
         {
             <p class="text-muted small">Loading reminder history...</p>
         }
-        else if (reminders.Count > 0)
+        else
         {
             <h5 class="mb-2">Reminder History</h5>
             <div class="table-responsive">
@@ -346,16 +346,35 @@ else
                     <thead>
                         <tr>
                             <th>Date</th>
+                            <th>Type</th>
                             <th>Status</th>
                             <th>Recipient</th>
                             <th>Subject</th>
                         </tr>
                     </thead>
                     <tbody>
+                        @if (reminders.Count == 0)
+                        {
+                            <tr><td colspan="5" class="text-muted text-center">No entries yet.</td></tr>
+                        }
                         @foreach (var r in reminders)
                         {
                             <tr>
                                 <td class="text-nowrap">@r.SentAtUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                                <td>
+                                    @if (r.Type == ReminderType.ManualOverdue)
+                                    {
+                                        <span class="badge bg-primary">Manual</span>
+                                    }
+                                    else if (r.Type == ReminderType.AutomaticOverdue)
+                                    {
+                                        <span class="badge bg-secondary">Automatic</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-info text-dark">Invoice Send</span>
+                                    }
+                                </td>
                                 <td>
                                     @if (r.Status == ReminderStatus.Sent)
                                     {
@@ -363,7 +382,11 @@ else
                                     }
                                     else
                                     {
-                                        <span class="badge bg-danger" title="@r.FailureReason">Failed</span>
+                                        <span class="badge bg-danger">Failed</span>
+                                    }
+                                    @if (r.Status == ReminderStatus.Failed && !string.IsNullOrWhiteSpace(r.FailureReason))
+                                    {
+                                        <br /><small class="text-muted">@r.FailureReason</small>
                                     }
                                 </td>
                                 <td>@r.RecipientEmail</td>
@@ -373,10 +396,6 @@ else
                     </tbody>
                 </table>
             </div>
-        }
-        else
-        {
-            <p class="text-muted small">No reminders sent yet.</p>
         }
     }
 

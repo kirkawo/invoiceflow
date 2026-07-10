@@ -90,6 +90,7 @@ public class ManualReminderService
         Subject = reminder.Subject,
         Status = reminder.Status,
         SentAtUtc = reminder.SentAtUtc,
+        CreatedAtUtc = reminder.CreatedAtUtc,
         FailureReason = reminder.FailureReason
     };
 }
