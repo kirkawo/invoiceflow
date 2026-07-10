@@ -2,6 +2,7 @@
 @using Microsoft.AspNetCore.Components.Authorization
 
 @inject ClientService ClientService
+@inject InvoiceService InvoiceService
 @inject AuthenticationStateProvider AuthStateProvider
 
 <AuthorizeView>
@@ -29,6 +30,22 @@
                         <div class="card-body">
                             <div class="text-white-50 small text-uppercase fw-semibold mb-1">Total Clients</div>
                             <p class="display-6 mb-0">@clients.Count</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card @(overdueCount > 0 ? "text-bg-danger" : "text-bg-secondary")">
+                        <div class="card-body">
+                            <div class="text-white-50 small text-uppercase fw-semibold mb-1">Overdue Invoices</div>
+                            <p class="display-6 mb-0">@overdueCount</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card @(upcomingCount > 0 ? "text-bg-warning" : "text-bg-secondary")">
+                        <div class="card-body">
+                            <div class="text-white-50 small text-uppercase fw-semibold mb-1">Due Soon</div>
+                            <p class="display-6 mb-0">@upcomingCount</p>
                         </div>
                     </div>
                 </div>
@@ -85,12 +102,21 @@
         @code {
             private IReadOnlyList<ClientDto>? clients;
             private string? error;
+            private int overdueCount;
+            private int upcomingCount;
 
             protected override async Task OnInitializedAsync()
             {
                 try
                 {
                     clients = await ClientService.GetClientsAsync();
+
+                    var allInvoices = await InvoiceService.GetAllInvoicesAsync();
+                    var today = DateOnly.FromDateTime(DateTime.UtcNow);
+                    overdueCount = allInvoices.Count(i => i.Status == InvoiceStatus.Overdue);
+                    upcomingCount = allInvoices.Count(i =>
+                        i.Status == InvoiceStatus.Issued
+                        && (DateOnly.FromDateTime(i.DueDateUtc).DayNumber - today.DayNumber) is >= 0 and <= 3);
                 }
                 catch (Exception ex)
                 {
