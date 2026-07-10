@@ -121,6 +121,8 @@ if (app.Configuration.GetValue<bool>("HttpsRedirect"))
 app.UseStaticFiles();
 app.UseAntiforgery();
 
+app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
+
 app.UseAuthentication();
 app.UseAuthorization();
 

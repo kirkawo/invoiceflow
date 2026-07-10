@@ -75,9 +75,9 @@ The base `appsettings.json` connection strings use `localhost:5433` for host-sid
 
 ## CI
 
-A GitHub Actions workflow runs on every push and pull request to `main`:
+A GitHub Actions workflow runs on every push and pull request to `main` and `develop`:
 
-- **Trigger**: `push` / `pull_request` on `main`
+- **Trigger**: `push` / `pull_request` on `main`, `develop`
 - **Steps**:
   1. Restore NuGet packages
   2. Build solution in **Release** configuration
@@ -104,7 +104,7 @@ docker compose -f docker-compose.prod.yml logs -f
 
 ### Health checks
 
-The Api exposes `GET /health` (returns `{"status":"healthy"}`) for container health checks and monitoring. The stack's startup order is `db → api → web` — Web waits for Api to complete migrations before starting.
+Both the Api and Web services expose `GET /health` (returns `{"status":"healthy"}`) for container health checks and monitoring. The stack's startup order is `db → api → web` — Web waits for both db and api to be healthy before starting.
 
 ### Migration strategy
 

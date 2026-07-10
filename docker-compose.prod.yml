@@ -53,6 +53,12 @@ services:
         condition: service_healthy
       api:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       Database__ConnectionString: Host=db;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
@@ -64,7 +70,6 @@ services:
       Email__Username: ${EMAIL_USERNAME}
       Email__Password: ${EMAIL_PASSWORD}
       Email__UseSsl: ${EMAIL_USE_SSL}
-      Logging__LogLevel__Microsoft.AspNetCore.DataProtection: Trace
     ports:
       - "${WEB_PORT:-5001}:8080"
     volumes:
