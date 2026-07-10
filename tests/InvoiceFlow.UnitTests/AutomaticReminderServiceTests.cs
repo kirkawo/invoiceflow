@@ -2,6 +2,7 @@ using InvoiceFlow.Application.Abstractions;
 using InvoiceFlow.Application.Options;
 using InvoiceFlow.Application.Reminders;
 using InvoiceFlow.Domain;
+using Microsoft.Extensions.Logging;
 
 namespace InvoiceFlow.UnitTests;
 
@@ -36,7 +37,8 @@ public class AutomaticReminderServiceTests
             _clientRepository,
             _emailSender,
             _currentWorkspaceService,
-            _options);
+            _options,
+            TestNullLogger<AutomaticReminderService>.Instance);
     }
 
     private async Task<Guid> CreateClientAsync(string email = "client@example.com")
@@ -166,7 +168,8 @@ public class AutomaticReminderServiceTests
         // Wipe client email via wrapped repo
         var clientRepoNoEmail = new ClientNoEmailRepo(_clientRepository, clientId);
         var service = new AutomaticReminderService(
-            _invoiceRepository, _reminderRepository, clientRepoNoEmail, _emailSender, _currentWorkspaceService, _options);
+            _invoiceRepository, _reminderRepository, clientRepoNoEmail, _emailSender, _currentWorkspaceService, _options,
+            TestNullLogger<AutomaticReminderService>.Instance);
 
         var count = await service.SendAutoRemindersAsync(now);
 

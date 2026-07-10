@@ -1,5 +1,6 @@
 using InvoiceFlow.Application.Abstractions;
 using InvoiceFlow.Domain;
+using Microsoft.Extensions.Logging;
 
 namespace InvoiceFlow.Application.Reminders;
 
@@ -10,19 +11,22 @@ public class ManualReminderService
     private readonly IReminderRepository _reminderRepository;
     private readonly ICurrentWorkspaceService _workspaceService;
     private readonly IEmailSender _emailSender;
+    private readonly ILogger<ManualReminderService> _logger;
 
     public ManualReminderService(
         IInvoiceRepository invoiceRepository,
         IClientRepository clientRepository,
         IReminderRepository reminderRepository,
         ICurrentWorkspaceService workspaceService,
-        IEmailSender emailSender)
+        IEmailSender emailSender,
+        ILogger<ManualReminderService> logger)
     {
         _invoiceRepository = invoiceRepository;
         _clientRepository = clientRepository;
         _reminderRepository = reminderRepository;
         _workspaceService = workspaceService;
         _emailSender = emailSender;
+        _logger = logger;
     }
 
     public async Task<ReminderDto> SendManualReminderAsync(
@@ -64,6 +68,10 @@ public class ManualReminderService
             success ? null : "Email delivery failed.");
 
         await _reminderRepository.AddAsync(reminder, cancellationToken);
+
+        _logger.LogInformation(
+            "Manual reminder for Invoice {InvoiceId} to {Email}: {Status}.",
+            invoiceId, client.Email, success ? "sent" : "failed");
 
         return MapToDto(reminder);
     }

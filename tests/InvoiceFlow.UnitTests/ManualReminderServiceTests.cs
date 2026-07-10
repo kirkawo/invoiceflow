@@ -1,6 +1,7 @@
 using InvoiceFlow.Application.Abstractions;
 using InvoiceFlow.Application.Reminders;
 using InvoiceFlow.Domain;
+using Microsoft.Extensions.Logging;
 
 namespace InvoiceFlow.UnitTests;
 
@@ -24,7 +25,8 @@ public class ManualReminderServiceTests
             _clientRepository,
             _reminderRepository,
             new FakeCurrentWorkspaceService { WorkspaceId = TestWorkspaceId },
-            _emailSender);
+            _emailSender,
+            TestNullLogger<ManualReminderService>.Instance);
     }
 
     private async Task<(Guid invoiceId, Guid clientId)> CreateOverdueInvoiceAsync(string clientEmail = "client@example.com")
@@ -101,7 +103,8 @@ public class ManualReminderServiceTests
         var wrappedClientRepo = new ClientNoEmailRepo(_clientRepository, client.Id);
         var service = new ManualReminderService(
             _invoiceRepository, wrappedClientRepo, _reminderRepository,
-            new FakeCurrentWorkspaceService { WorkspaceId = TestWorkspaceId }, _emailSender);
+            new FakeCurrentWorkspaceService { WorkspaceId = TestWorkspaceId }, _emailSender,
+            TestNullLogger<ManualReminderService>.Instance);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             service.SendManualReminderAsync(invoice.Id));
@@ -124,7 +127,8 @@ public class ManualReminderServiceTests
         var wrappedClientRepo = new ClientEmptyEmailRepo(_clientRepository, client.Id);
         var service = new ManualReminderService(
             _invoiceRepository, wrappedClientRepo, _reminderRepository,
-            new FakeCurrentWorkspaceService { WorkspaceId = TestWorkspaceId }, _emailSender);
+            new FakeCurrentWorkspaceService { WorkspaceId = TestWorkspaceId }, _emailSender,
+            TestNullLogger<ManualReminderService>.Instance);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             service.SendManualReminderAsync(invoice.Id));

@@ -3,6 +3,7 @@ using InvoiceFlow.Application.Invoices;
 using InvoiceFlow.Application.Options;
 using InvoiceFlow.Application.Reminders;
 using InvoiceFlow.Domain;
+using Microsoft.Extensions.Logging;
 
 namespace InvoiceFlow.UnitTests;
 
@@ -24,7 +25,7 @@ public class OverdueIntegrationTests
         _reminderRepository = new FakeReminderRepository { FilterWorkspaceId = TestWorkspaceId };
         _emailSender = new FakeEmailSender();
         _workspaceService = new FakeCurrentWorkspaceService { WorkspaceId = TestWorkspaceId };
-        _syncService = new InvoiceStatusSyncService(_invoiceRepository);
+        _syncService = new InvoiceStatusSyncService(_invoiceRepository, TestNullLogger<InvoiceStatusSyncService>.Instance);
         _reminderService = new AutomaticReminderService(
             _invoiceRepository,
             _reminderRepository,
@@ -36,7 +37,8 @@ public class OverdueIntegrationTests
                 OverdueThresholdDays = 1,
                 CooldownDays = 7,
                 MaxAutoReminders = 2
-            });
+            },
+            TestNullLogger<AutomaticReminderService>.Instance);
     }
 
     private async Task<(Guid clientId, Guid invoiceId)> CreateIssuedInvoiceAsync(

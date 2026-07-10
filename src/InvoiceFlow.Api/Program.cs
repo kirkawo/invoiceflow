@@ -62,6 +62,7 @@ if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
 {
     await using var scope = app.Services.CreateAsyncScope();
     var context = scope.ServiceProvider.GetRequiredService<InvoiceFlowDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
     const int maxAttempts = 10;
     for (var attempt = 1; attempt <= maxAttempts; attempt++)
@@ -69,10 +70,14 @@ if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
         try
         {
             await context.Database.MigrateAsync();
+            logger.LogInformation("Database migration completed on attempt {Attempt}.", attempt);
             break;
         }
         catch when (attempt < maxAttempts)
         {
+            logger.LogWarning(
+                "Database migration attempt {Attempt}/{MaxAttempts} failed. Retrying in 3s...",
+                attempt, maxAttempts);
             await Task.Delay(TimeSpan.FromSeconds(3));
         }
     }
