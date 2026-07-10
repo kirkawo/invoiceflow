@@ -1,3 +1,4 @@
+using InvoiceFlow.Application.Invoices;
 using InvoiceFlow.Application.Options;
 using InvoiceFlow.Application.Reminders;
 using InvoiceFlow.Infrastructure.Persistence;
@@ -45,6 +46,19 @@ public class AutomaticReminderBackgroundService : BackgroundService
 
     private async Task ProcessAllWorkspacesAsync(CancellationToken cancellationToken)
     {
+        var utcNow = DateTime.UtcNow;
+
+        using (var syncScope = _scopeFactory.CreateScope())
+        {
+            var syncService = syncScope.ServiceProvider.GetRequiredService<InvoiceStatusSyncService>();
+            var syncCount = await syncService.SyncOverdueStatusAsync(utcNow, cancellationToken);
+            if (syncCount > 0)
+            {
+                _logger.LogInformation(
+                    "Synced {Count} invoice(s) to Overdue status.", syncCount);
+            }
+        }
+
         using var scope = _scopeFactory.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<InvoiceFlowDbContext>();
         var workspaceIds = await dbContext.Workspaces
@@ -57,7 +71,7 @@ public class AutomaticReminderBackgroundService : BackgroundService
             using var _ = CurrentWorkspaceService.PushWorkspace(workspaceId);
 
             var service = wsScope.ServiceProvider.GetRequiredService<AutomaticReminderService>();
-            var count = await service.SendAutoRemindersAsync(DateTime.UtcNow, cancellationToken);
+            var count = await service.SendAutoRemindersAsync(utcNow, cancellationToken);
 
             if (count > 0)
             {

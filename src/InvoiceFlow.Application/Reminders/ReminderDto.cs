@@ -11,5 +11,6 @@ public class ReminderDto
     public string Subject { get; init; } = string.Empty;
     public ReminderStatus Status { get; init; }
     public DateTime SentAtUtc { get; init; }
+    public DateTime CreatedAtUtc { get; init; }
     public string? FailureReason { get; init; }
 }
