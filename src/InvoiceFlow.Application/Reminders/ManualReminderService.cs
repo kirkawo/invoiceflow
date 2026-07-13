@@ -69,9 +69,18 @@ public class ManualReminderService
 
         await _reminderRepository.AddAsync(reminder, cancellationToken);
 
-        _logger.LogInformation(
-            "Manual reminder for Invoice {InvoiceId} to {Email}: {Status}.",
-            invoiceId, client.Email, success ? "sent" : "failed");
+        if (success)
+        {
+            _logger.LogInformation(
+                "Manual reminder sent for Invoice {InvoiceNumber} (Id={InvoiceId}) to {Email}.",
+                invoice.Number, invoiceId, client.Email);
+        }
+        else
+        {
+            _logger.LogWarning(
+                "Manual reminder failed for Invoice {InvoiceNumber} (Id={InvoiceId}) to {Email}.",
+                invoice.Number, invoiceId, client.Email);
+        }
 
         return MapToDto(reminder);
     }

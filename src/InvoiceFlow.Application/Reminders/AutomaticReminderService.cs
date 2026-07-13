@@ -113,9 +113,18 @@ public class AutomaticReminderService
 
         await _reminderRepository.AddAsync(reminder, cancellationToken);
 
-        _logger.LogInformation(
-            "Auto-reminder for Invoice {InvoiceId} to {Email}: {Status}.",
-            invoice.Id, client.Email, success ? "sent" : "failed");
+        if (success)
+        {
+            _logger.LogInformation(
+                "Auto-reminder sent for Invoice {InvoiceNumber} (Id={InvoiceId}) to {Email}.",
+                invoice.Number, invoice.Id, client.Email);
+        }
+        else
+        {
+            _logger.LogWarning(
+                "Auto-reminder failed for Invoice {InvoiceNumber} (Id={InvoiceId}) to {Email}.",
+                invoice.Number, invoice.Id, client.Email);
+        }
 
         return true;
     }

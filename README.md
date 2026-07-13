@@ -147,18 +147,24 @@ Logs are written to stdout/stderr via ASP.NET Core's built-in logging and are av
 | Database migration retries | Warning | Each failed attempt before final success/failure |
 | Migration complete | Information | Includes attempt number |
 | Overdue invoice sync | Information | Count of invoices transitioned |
-| Automatic reminder sent/failed | Information | Includes invoice ID and recipient |
-| Manual reminder sent/failed | Information | Includes invoice ID and recipient |
-| Invoice email sent/failed | Information | Includes invoice ID and recipient |
+| Automatic reminder sent | Information | Includes invoice number, ID, and recipient |
+| Automatic reminder failed | Warning | Includes invoice number, ID, and recipient; detailed SMTP error logged separately at Error level |
+| Manual reminder sent | Information | Includes invoice number, ID, and recipient |
+| Manual reminder failed | Warning | Includes invoice number, ID, and recipient; detailed SMTP error logged separately at Error level |
+| Invoice email sent | Information | Includes invoice number, ID, and recipient |
+| Invoice email failed | Warning | Includes invoice number, ID, and recipient; detailed SMTP error logged separately at Error level |
 | Client missing email (auto-reminder) | Warning | When a reminder is skipped due to missing client email |
 | Background cycle complete | Information | Workspaces checked + total reminders sent |
-| Unhandled background error | Error | Full stack trace preserved |
-| Email provider failure | Error | Full stack trace preserved; email recorded as failed |
+| Per-workspace reminder error | Error | Full stack trace + workspace ID; other workspaces continue processing |
+| Unhandled background cycle error | Error | Full stack trace preserved |
+| Email provider failure | Error | Full stack trace + SMTP host/port; email recorded as failed |
 | SMTP not configured | Warning | Logged once at startup if no SMTP host is set |
+| Blazor send invoice email failed | Warning | Server-side log for UI-triggered email failures |
+| Blazor send reminder failed | Warning | Server-side log for UI-triggered reminder failures |
 
-**When reminders or email fail:** Check logs for `Error` or `Warning` entries containing `Failed to send email` or `email delivery failed`. The SmtpEmailSender logs the recipient and subject on failure. Reminder records in the database also store the `FailureReason` string.
+**When reminders or email fail:** Check logs for `Warning` entries containing `failed for Invoice`. These now include the invoice number and recipient for quick identification. The `SmtpEmailSender` logs the underlying exception at `Error` level with SMTP connection details (host/port). Reminder records in the database also store the `FailureReason` string.
 
-**Background job events:** The automatic reminder service runs on an interval (configurable via `Reminders:CheckIntervalHours`). Each cycle logs a summary line with workspace count and reminders sent. No per-invoice log spam unless a warning or error occurs.
+**Background job events:** The automatic reminder service runs on an interval (configurable via `Reminders:CheckIntervalHours`). Each cycle logs a summary line with workspace count and reminders sent. Individual workspace errors are caught and logged with the workspace ID, allowing other workspaces to continue processing.
 
 ## Out of scope for MVP
 

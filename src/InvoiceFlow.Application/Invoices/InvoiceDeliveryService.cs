@@ -81,9 +81,18 @@ public class InvoiceDeliveryService
 
         await _reminderRepository.AddAsync(reminder, cancellationToken);
 
-        _logger.LogInformation(
-            "Invoice email for Invoice {InvoiceId} to {Email}: {Status}.",
-            invoiceId, client.Email, success ? "sent" : "failed");
+        if (success)
+        {
+            _logger.LogInformation(
+                "Invoice email sent for Invoice {InvoiceNumber} (Id={InvoiceId}) to {Email}.",
+                invoice.Number, invoiceId, client.Email);
+        }
+        else
+        {
+            _logger.LogWarning(
+                "Invoice email failed for Invoice {InvoiceNumber} (Id={InvoiceId}) to {Email}.",
+                invoice.Number, invoiceId, client.Email);
+        }
 
         return MapToDto(reminder);
     }

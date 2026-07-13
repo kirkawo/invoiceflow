@@ -69,14 +69,25 @@ public class AutomaticReminderBackgroundService : BackgroundService
             .ToListAsync(cancellationToken);
 
         var totalSent = 0;
+        var workspaceCount = 0;
         foreach (var workspaceId in workspaceIds)
         {
-            using var wsScope = _scopeFactory.CreateScope();
-            using var _ = CurrentWorkspaceService.PushWorkspace(workspaceId);
+            workspaceCount++;
+            try
+            {
+                using var wsScope = _scopeFactory.CreateScope();
+                using var _ = CurrentWorkspaceService.PushWorkspace(workspaceId);
 
-            var service = wsScope.ServiceProvider.GetRequiredService<AutomaticReminderService>();
-            var count = await service.SendAutoRemindersAsync(utcNow, cancellationToken);
-            totalSent += count;
+                var service = wsScope.ServiceProvider.GetRequiredService<AutomaticReminderService>();
+                var count = await service.SendAutoRemindersAsync(utcNow, cancellationToken);
+                totalSent += count;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Error processing automatic reminders for workspace {WorkspaceIndex}/{WorkspaceTotal} (Id={WorkspaceId}).",
+                    workspaceCount, workspaceIds.Count, workspaceId);
+            }
         }
 
         _logger.LogInformation(
