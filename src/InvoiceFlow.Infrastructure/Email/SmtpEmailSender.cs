@@ -51,7 +51,9 @@ public class SmtpEmailSender : IEmailSender
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send email: To={To}, Subject={Subject}", to, subject);
+            _logger.LogError(ex,
+                "Failed to send email: To={To}, Subject={Subject}, SmtpHost={SmtpHost}, SmtpPort={SmtpPort}",
+                to, subject, _options.SmtpHost, _options.SmtpPort);
             return false;
         }
     }

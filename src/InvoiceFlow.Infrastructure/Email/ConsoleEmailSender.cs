@@ -17,7 +17,8 @@ public class ConsoleEmailSender : IEmailSender
 
     public Task<bool> TrySendAsync(string to, string subject, string body, CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("Email sent (stub): To={To}, Subject={Subject}, Body={Body}", to, subject, body);
+        _logger.LogDebug("Email (stub): To={To}, Subject={Subject}", to, subject);
+        _logger.LogTrace("Email body: {Body}", body);
         return Task.FromResult(true);
     }
 }

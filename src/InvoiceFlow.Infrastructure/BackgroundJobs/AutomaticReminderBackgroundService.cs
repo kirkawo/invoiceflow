@@ -27,7 +27,9 @@ public class AutomaticReminderBackgroundService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("Automatic reminder background service started.");
+        _logger.LogInformation(
+            "Automatic reminder background service started. Interval: {IntervalHours}h.",
+            _options.CheckIntervalHours);
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -37,7 +39,7 @@ public class AutomaticReminderBackgroundService : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error processing automatic reminders.");
+                _logger.LogError(ex, "Unhandled error in automatic reminder cycle.");
             }
 
             await Task.Delay(TimeSpan.FromHours(_options.CheckIntervalHours), stoppingToken);
@@ -47,6 +49,7 @@ public class AutomaticReminderBackgroundService : BackgroundService
     private async Task ProcessAllWorkspacesAsync(CancellationToken cancellationToken)
     {
         var utcNow = DateTime.UtcNow;
+        _logger.LogDebug("Starting automatic reminder cycle at {UtcNow}.", utcNow);
 
         using (var syncScope = _scopeFactory.CreateScope())
         {
@@ -55,7 +58,7 @@ public class AutomaticReminderBackgroundService : BackgroundService
             if (syncCount > 0)
             {
                 _logger.LogInformation(
-                    "Synced {Count} invoice(s) to Overdue status.", syncCount);
+                    "Overdue sync: {Count} invoice(s) transitioned to Overdue.", syncCount);
             }
         }
 
@@ -65,20 +68,30 @@ public class AutomaticReminderBackgroundService : BackgroundService
             .Select(w => w.Id)
             .ToListAsync(cancellationToken);
 
+        var totalSent = 0;
+        var workspaceCount = 0;
         foreach (var workspaceId in workspaceIds)
         {
-            using var wsScope = _scopeFactory.CreateScope();
-            using var _ = CurrentWorkspaceService.PushWorkspace(workspaceId);
-
-            var service = wsScope.ServiceProvider.GetRequiredService<AutomaticReminderService>();
-            var count = await service.SendAutoRemindersAsync(utcNow, cancellationToken);
-
-            if (count > 0)
+            workspaceCount++;
+            try
             {
-                _logger.LogInformation(
-                    "Sent {Count} automatic reminder(s) for workspace {WorkspaceId}.",
-                    count, workspaceId);
+                using var wsScope = _scopeFactory.CreateScope();
+                using var _ = CurrentWorkspaceService.PushWorkspace(workspaceId);
+
+                var service = wsScope.ServiceProvider.GetRequiredService<AutomaticReminderService>();
+                var count = await service.SendAutoRemindersAsync(utcNow, cancellationToken);
+                totalSent += count;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Error processing automatic reminders for workspace {WorkspaceIndex}/{WorkspaceTotal} (Id={WorkspaceId}).",
+                    workspaceCount, workspaceIds.Count, workspaceId);
             }
         }
+
+        _logger.LogInformation(
+            "Reminder cycle complete. Workspaces checked: {WorkspaceCount}, reminders sent: {TotalSent}.",
+            workspaceIds.Count, totalSent);
     }
 }

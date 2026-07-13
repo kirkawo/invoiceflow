@@ -1,6 +1,7 @@
 using InvoiceFlow.Application.Abstractions;
 using InvoiceFlow.Application.Invoices;
 using InvoiceFlow.Domain;
+using Microsoft.Extensions.Logging;
 
 namespace InvoiceFlow.UnitTests;
 
@@ -323,7 +324,7 @@ public class InvoiceServiceTests
         await _service.AddLineItemAsync(invoiceId, "Item", 1, 100);
         await _service.IssueInvoiceAsync(invoiceId);
 
-        var syncService = new InvoiceStatusSyncService(_invoiceRepository);
+        var syncService = new InvoiceStatusSyncService(_invoiceRepository, TestNullLogger<InvoiceStatusSyncService>.Instance);
         var count = await syncService.SyncOverdueStatusAsync(now);
 
         var invoice = await _invoiceRepository.GetByIdAsync(invoiceId);
@@ -340,7 +341,7 @@ public class InvoiceServiceTests
         await _service.AddLineItemAsync(invoiceId, "Item", 1, 100);
         await _service.IssueInvoiceAsync(invoiceId);
 
-        var syncService = new InvoiceStatusSyncService(_invoiceRepository);
+        var syncService = new InvoiceStatusSyncService(_invoiceRepository, TestNullLogger<InvoiceStatusSyncService>.Instance);
         var today = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc);
         var count = await syncService.SyncOverdueStatusAsync(today);
 
@@ -359,7 +360,7 @@ public class InvoiceServiceTests
         await _service.IssueInvoiceAsync(invoiceId);
         await _service.MarkInvoicePaidAsync(invoiceId);
 
-        var syncService = new InvoiceStatusSyncService(_invoiceRepository);
+        var syncService = new InvoiceStatusSyncService(_invoiceRepository, TestNullLogger<InvoiceStatusSyncService>.Instance);
         var future = new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc);
         var count = await syncService.SyncOverdueStatusAsync(future);
 
@@ -376,7 +377,7 @@ public class InvoiceServiceTests
         var invoiceId = await CreateDraftInvoiceAsync(clientId);
         await _service.CancelInvoiceAsync(invoiceId);
 
-        var syncService = new InvoiceStatusSyncService(_invoiceRepository);
+        var syncService = new InvoiceStatusSyncService(_invoiceRepository, TestNullLogger<InvoiceStatusSyncService>.Instance);
         var future = new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc);
         var count = await syncService.SyncOverdueStatusAsync(future);
 
@@ -392,7 +393,7 @@ public class InvoiceServiceTests
         var clientId = await CreateClientAsync();
         var invoiceId = await CreateDraftInvoiceAsync(clientId);
 
-        var syncService = new InvoiceStatusSyncService(_invoiceRepository);
+        var syncService = new InvoiceStatusSyncService(_invoiceRepository, TestNullLogger<InvoiceStatusSyncService>.Instance);
         var future = new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc);
         var count = await syncService.SyncOverdueStatusAsync(future);
 
@@ -412,7 +413,7 @@ public class InvoiceServiceTests
         await _service.AddLineItemAsync(invoiceId, "Item", 1, 100);
         await _service.IssueInvoiceAsync(invoiceId);
 
-        var syncService = new InvoiceStatusSyncService(_invoiceRepository);
+        var syncService = new InvoiceStatusSyncService(_invoiceRepository, TestNullLogger<InvoiceStatusSyncService>.Instance);
         var count1 = await syncService.SyncOverdueStatusAsync(now);
         var count2 = await syncService.SyncOverdueStatusAsync(now);
 
@@ -440,7 +441,7 @@ public class InvoiceServiceTests
         otherInvoice.Issue();
         await _invoiceRepository.AddAsync(otherInvoice);
 
-        var syncService = new InvoiceStatusSyncService(_invoiceRepository);
+        var syncService = new InvoiceStatusSyncService(_invoiceRepository, TestNullLogger<InvoiceStatusSyncService>.Instance);
         var count = await syncService.SyncOverdueStatusAsync(now);
 
         Assert.Equal(1, count);

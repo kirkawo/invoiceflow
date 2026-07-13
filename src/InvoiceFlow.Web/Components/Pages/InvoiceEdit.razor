@@ -8,6 +8,7 @@
 @inject ManualReminderService ReminderService
 @inject IOptions<AppOptions> AppOptionsAccessor
 @inject InvoiceDeliveryService InvoiceDeliveryService
+@inject ILogger<InvoiceEdit> EditLogger
 
 <PageTitle>Invoice @invoice?.Number - InvoiceFlow</PageTitle>
 
@@ -410,6 +411,7 @@ else
 }
 
 @using InvoiceFlow.Application.Reminders
+@using Microsoft.Extensions.Logging
 
 @code {
     private InvoiceDto? invoice;
@@ -649,6 +651,9 @@ else
         }
         catch (InvalidOperationException ex)
         {
+            EditLogger.LogWarning(ex,
+                "Send invoice email failed for Invoice {InvoiceId}: {ErrorMessage}",
+                invoice?.Id, ex.Message);
             deliveryFeedback = ex.Message;
             deliveryFeedbackCssClass = "alert-danger";
         }
@@ -673,6 +678,9 @@ else
         }
         catch (InvalidOperationException ex)
         {
+            EditLogger.LogWarning(ex,
+                "Send manual reminder failed for Invoice {InvoiceId}: {ErrorMessage}",
+                invoice?.Id, ex.Message);
             reminderFeedback = ex.Message;
             reminderFeedbackCssClass = "alert-danger";
         }

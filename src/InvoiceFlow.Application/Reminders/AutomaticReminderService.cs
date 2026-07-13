@@ -1,6 +1,7 @@
 using InvoiceFlow.Application.Abstractions;
 using InvoiceFlow.Application.Options;
 using InvoiceFlow.Domain;
+using Microsoft.Extensions.Logging;
 
 namespace InvoiceFlow.Application.Reminders;
 
@@ -12,6 +13,7 @@ public class AutomaticReminderService
     private readonly IEmailSender _emailSender;
     private readonly ICurrentWorkspaceService _currentWorkspaceService;
     private readonly ReminderOptions _options;
+    private readonly ILogger<AutomaticReminderService> _logger;
 
     public AutomaticReminderService(
         IInvoiceRepository invoiceRepository,
@@ -19,7 +21,8 @@ public class AutomaticReminderService
         IClientRepository clientRepository,
         IEmailSender emailSender,
         ICurrentWorkspaceService currentWorkspaceService,
-        ReminderOptions options)
+        ReminderOptions options,
+        ILogger<AutomaticReminderService> logger)
     {
         _invoiceRepository = invoiceRepository;
         _reminderRepository = reminderRepository;
@@ -27,6 +30,7 @@ public class AutomaticReminderService
         _emailSender = emailSender;
         _currentWorkspaceService = currentWorkspaceService;
         _options = options;
+        _logger = logger;
     }
 
     public async Task<int> SendAutoRemindersAsync(
@@ -58,7 +62,12 @@ public class AutomaticReminderService
 
         var client = await _clientRepository.GetByIdAsync(invoice.ClientId, cancellationToken);
         if (client is null || string.IsNullOrWhiteSpace(client.Email))
+        {
+            _logger.LogWarning(
+                "Skipping auto-reminder for Invoice {InvoiceId}: client has no email.",
+                invoice.Id);
             return false;
+        }
 
         var reminders = await _reminderRepository.ListByInvoiceAsync(invoice.Id, cancellationToken);
         var autoReminders = reminders
@@ -75,7 +84,12 @@ public class AutomaticReminderService
         else
         {
             if (autoReminders.Count >= _options.MaxAutoReminders)
+            {
+                _logger.LogDebug(
+                    "Skipping auto-reminder for Invoice {InvoiceId}: max reminders ({Max}) reached.",
+                    invoice.Id, _options.MaxAutoReminders);
                 return false;
+            }
 
             var lastSent = autoReminders[^1].SentAtUtc;
             if ((utcNow - lastSent).TotalDays < _options.CooldownDays)
@@ -98,6 +112,19 @@ public class AutomaticReminderService
             success ? null : "Email delivery failed.");
 
         await _reminderRepository.AddAsync(reminder, cancellationToken);
+
+        if (success)
+        {
+            _logger.LogInformation(
+                "Auto-reminder sent for Invoice {InvoiceNumber} (Id={InvoiceId}) to {Email}.",
+                invoice.Number, invoice.Id, client.Email);
+        }
+        else
+        {
+            _logger.LogWarning(
+                "Auto-reminder failed for Invoice {InvoiceNumber} (Id={InvoiceId}) to {Email}.",
+                invoice.Number, invoice.Id, client.Email);
+        }
 
         return true;
     }

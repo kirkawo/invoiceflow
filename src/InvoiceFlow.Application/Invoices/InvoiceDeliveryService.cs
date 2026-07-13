@@ -2,6 +2,7 @@ using InvoiceFlow.Application.Abstractions;
 using InvoiceFlow.Application.Options;
 using InvoiceFlow.Application.Reminders;
 using InvoiceFlow.Domain;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace InvoiceFlow.Application.Invoices;
@@ -14,6 +15,7 @@ public class InvoiceDeliveryService
     private readonly ICurrentWorkspaceService _workspaceService;
     private readonly IEmailSender _emailSender;
     private readonly AppOptions _appOptions;
+    private readonly ILogger<InvoiceDeliveryService> _logger;
 
     public InvoiceDeliveryService(
         IInvoiceRepository invoiceRepository,
@@ -21,7 +23,8 @@ public class InvoiceDeliveryService
         IReminderRepository reminderRepository,
         ICurrentWorkspaceService workspaceService,
         IEmailSender emailSender,
-        IOptions<AppOptions> appOptions)
+        IOptions<AppOptions> appOptions,
+        ILogger<InvoiceDeliveryService> logger)
     {
         _invoiceRepository = invoiceRepository;
         _clientRepository = clientRepository;
@@ -29,6 +32,7 @@ public class InvoiceDeliveryService
         _workspaceService = workspaceService;
         _emailSender = emailSender;
         _appOptions = appOptions.Value;
+        _logger = logger;
     }
 
     public async Task<ReminderDto> SendInvoiceEmailAsync(
@@ -76,6 +80,19 @@ public class InvoiceDeliveryService
             success ? null : "Email delivery failed.");
 
         await _reminderRepository.AddAsync(reminder, cancellationToken);
+
+        if (success)
+        {
+            _logger.LogInformation(
+                "Invoice email sent for Invoice {InvoiceNumber} (Id={InvoiceId}) to {Email}.",
+                invoice.Number, invoiceId, client.Email);
+        }
+        else
+        {
+            _logger.LogWarning(
+                "Invoice email failed for Invoice {InvoiceNumber} (Id={InvoiceId}) to {Email}.",
+                invoice.Number, invoiceId, client.Email);
+        }
 
         return MapToDto(reminder);
     }
