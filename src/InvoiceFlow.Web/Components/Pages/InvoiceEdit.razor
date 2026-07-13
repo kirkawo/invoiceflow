@@ -641,7 +641,9 @@ else
     private async Task SendInvoiceEmail()
     {
         if (invoice is null) return;
+        if (sendingDelivery) return;
         sendingDelivery = true;
+        StateHasChanged();
         deliveryFeedback = null;
         try
         {
@@ -663,13 +665,16 @@ else
         finally
         {
             sendingDelivery = false;
+            StateHasChanged();
         }
     }
 
     private async Task SendReminder()
     {
         if (invoice is null) return;
+        if (sendingReminder) return;
         sendingReminder = true;
+        StateHasChanged();
         reminderFeedback = null;
         try
         {
@@ -690,6 +695,7 @@ else
         finally
         {
             sendingReminder = false;
+            StateHasChanged();
         }
     }
 

@@ -30,7 +30,9 @@ public class SmtpEmailSender : IEmailSender
 
             using var client = new SmtpClient();
 
-            await client.ConnectAsync(_options.SmtpHost, _options.SmtpPort, SecureSocketOptions.StartTls, cancellationToken);
+            using var connectCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            connectCts.CancelAfter(TimeSpan.FromSeconds(15));
+            await client.ConnectAsync(_options.SmtpHost, _options.SmtpPort, SecureSocketOptions.StartTls, connectCts.Token);
 
             if (!string.IsNullOrWhiteSpace(_options.Username))
             {
