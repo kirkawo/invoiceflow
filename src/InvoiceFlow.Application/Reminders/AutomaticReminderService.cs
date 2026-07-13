@@ -52,6 +52,26 @@ public class AutomaticReminderService
         return count;
     }
 
+    public async Task<int> SendAutoRemindersAsync(
+        Guid workspaceId,
+        DateTime utcNow,
+        CancellationToken cancellationToken = default)
+    {
+        var allInvoices = await _invoiceRepository.ListAllAsync(workspaceId, cancellationToken);
+        var overdueInvoices = allInvoices.Where(i => i.Status == InvoiceStatus.Overdue).ToList();
+        var count = 0;
+
+        foreach (var invoice in overdueInvoices)
+        {
+            if (!await TrySendAutoReminderAsync(workspaceId, invoice, utcNow, cancellationToken))
+                continue;
+
+            count++;
+        }
+
+        return count;
+    }
+
     private async Task<bool> TrySendAutoReminderAsync(
         Invoice invoice,
         DateTime utcNow,
@@ -60,7 +80,28 @@ public class AutomaticReminderService
         if (invoice.WorkspaceId != _currentWorkspaceService.WorkspaceId)
             return false;
 
-        var client = await _clientRepository.GetByIdAsync(invoice.ClientId, cancellationToken);
+        return await SendAutoReminderCoreAsync(invoice, _currentWorkspaceService.WorkspaceId, utcNow, cancellationToken);
+    }
+
+    private async Task<bool> TrySendAutoReminderAsync(
+        Guid workspaceId,
+        Invoice invoice,
+        DateTime utcNow,
+        CancellationToken cancellationToken)
+    {
+        if (invoice.WorkspaceId != workspaceId)
+            return false;
+
+        return await SendAutoReminderCoreAsync(invoice, workspaceId, utcNow, cancellationToken);
+    }
+
+    private async Task<bool> SendAutoReminderCoreAsync(
+        Invoice invoice,
+        Guid workspaceId,
+        DateTime utcNow,
+        CancellationToken cancellationToken)
+    {
+        var client = await _clientRepository.GetByIdAsync(invoice.ClientId, workspaceId, cancellationToken);
         if (client is null || string.IsNullOrWhiteSpace(client.Email))
         {
             _logger.LogWarning(
@@ -69,7 +110,7 @@ public class AutomaticReminderService
             return false;
         }
 
-        var reminders = await _reminderRepository.ListByInvoiceAsync(invoice.Id, cancellationToken);
+        var reminders = await _reminderRepository.ListByInvoiceAsync(invoice.Id, workspaceId, cancellationToken);
         var autoReminders = reminders
             .Where(r => r.WorkspaceId == invoice.WorkspaceId && r.Type == ReminderType.AutomaticOverdue)
             .OrderBy(r => r.SentAtUtc)

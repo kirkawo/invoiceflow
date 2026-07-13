@@ -22,4 +22,7 @@ public class InMemoryClientRepository : IClientRepository
 
     public Task<IReadOnlyList<Client>> ListAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<Client>>(_store.Values.ToList().AsReadOnly());
+
+    public Task<Client?> GetByIdAsync(Guid id, Guid workspaceId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(_store.TryGetValue(id, out var client) && client.WorkspaceId == workspaceId ? client : null);
 }

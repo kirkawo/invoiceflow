@@ -12,4 +12,7 @@ public interface IInvoiceRepository
     Task<IReadOnlyList<Invoice>> ListAllAsync(CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Invoice>> GetOverdueCandidatesAsync(DateTime utcNow, CancellationToken cancellationToken = default);
     Task<string> GetNextInvoiceNumberAsync(CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<Invoice>> ListAllAsync(Guid workspaceId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<Invoice>> GetOverdueCandidatesAsync(Guid workspaceId, DateTime utcNow, CancellationToken cancellationToken = default);
 }

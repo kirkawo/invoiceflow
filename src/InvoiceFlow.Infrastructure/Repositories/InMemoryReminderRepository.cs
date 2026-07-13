@@ -23,4 +23,10 @@ public class InMemoryReminderRepository : IReminderRepository
             query = query.Where(r => r.WorkspaceId == FilterWorkspaceId.Value);
         return Task.FromResult<IReadOnlyList<Reminder>>(query.ToList().AsReadOnly());
     }
+
+    public Task<IReadOnlyList<Reminder>> ListByInvoiceAsync(Guid invoiceId, Guid workspaceId, CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult<IReadOnlyList<Reminder>>(
+            _store.Values.Where(r => r.InvoiceId == invoiceId && r.WorkspaceId == workspaceId).ToList().AsReadOnly());
+    }
 }
