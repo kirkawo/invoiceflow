@@ -6,4 +6,6 @@ public interface IReminderRepository
 {
     Task AddAsync(Reminder reminder, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Reminder>> ListByInvoiceAsync(Guid invoiceId, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<Reminder>> ListByInvoiceAsync(Guid invoiceId, Guid workspaceId, CancellationToken cancellationToken = default);
 }

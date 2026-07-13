@@ -44,4 +44,11 @@ public class EfClientRepository : IClientRepository
             .AsNoTracking()
             .ToListAsync(cancellationToken);
     }
+
+    public async Task<Client?> GetByIdAsync(Guid id, Guid workspaceId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Clients
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.WorkspaceId == workspaceId && c.Id == id, cancellationToken);
+    }
 }

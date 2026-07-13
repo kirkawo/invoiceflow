@@ -517,4 +517,17 @@ public class FakeInvoiceRepository : IInvoiceRepository
             .Max();
         return Task.FromResult($"{prefix}{(maxSeq + 1):D4}");
     }
+
+    public Task<IReadOnlyList<Invoice>> ListAllAsync(Guid workspaceId, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<Invoice>>(
+            _store.Values.Where(i => i.WorkspaceId == workspaceId).ToList().AsReadOnly());
+
+    public Task<IReadOnlyList<Invoice>> GetOverdueCandidatesAsync(Guid workspaceId, DateTime utcNow, CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult<IReadOnlyList<Invoice>>(
+            _store.Values
+                .Where(i => i.WorkspaceId == workspaceId && i.Status == InvoiceStatus.Issued && i.DueDateUtc < utcNow)
+                .ToList()
+                .AsReadOnly());
+    }
 }

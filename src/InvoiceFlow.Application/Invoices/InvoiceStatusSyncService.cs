@@ -18,6 +18,20 @@ public class InvoiceStatusSyncService
     public async Task<int> SyncOverdueStatusAsync(DateTime utcNow, CancellationToken cancellationToken = default)
     {
         var candidates = await _invoiceRepository.GetOverdueCandidatesAsync(utcNow, cancellationToken);
+        return await TransitionOverdueInvoicesAsync(candidates, utcNow, cancellationToken);
+    }
+
+    public async Task<int> SyncOverdueStatusAsync(Guid workspaceId, DateTime utcNow, CancellationToken cancellationToken = default)
+    {
+        var candidates = await _invoiceRepository.GetOverdueCandidatesAsync(workspaceId, utcNow, cancellationToken);
+        return await TransitionOverdueInvoicesAsync(candidates, utcNow, cancellationToken);
+    }
+
+    private async Task<int> TransitionOverdueInvoicesAsync(
+        IReadOnlyList<Invoice> candidates,
+        DateTime utcNow,
+        CancellationToken cancellationToken)
+    {
         var count = 0;
 
         foreach (var invoice in candidates)

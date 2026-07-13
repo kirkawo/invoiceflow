@@ -279,6 +279,12 @@ public class FakeReminderRepository : IReminderRepository
             query = query.Where(r => r.WorkspaceId == FilterWorkspaceId.Value);
         return Task.FromResult<IReadOnlyList<Reminder>>(query.ToList().AsReadOnly());
     }
+
+    public Task<IReadOnlyList<Reminder>> ListByInvoiceAsync(Guid invoiceId, Guid workspaceId, CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult<IReadOnlyList<Reminder>>(
+            All.Where(r => r.InvoiceId == invoiceId && r.WorkspaceId == workspaceId).ToList().AsReadOnly());
+    }
 }
 
 public class FakeEmailSender : IEmailSender
@@ -319,6 +325,17 @@ public class ClientNoEmailRepo : IClientRepository
 
     public async Task<IReadOnlyList<Client>> ListAsync(CancellationToken cancellationToken = default) =>
         await _inner.ListAsync(cancellationToken);
+
+    public async Task<Client?> GetByIdAsync(Guid id, Guid workspaceId, CancellationToken cancellationToken = default)
+    {
+        var client = await _inner.GetByIdAsync(id, workspaceId, cancellationToken);
+        if (client is not null && client.Id == _targetId)
+        {
+            var field = typeof(Client).GetField("<Email>k__BackingField", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            field?.SetValue(client, null);
+        }
+        return client;
+    }
 }
 
 public class ClientEmptyEmailRepo : IClientRepository
@@ -351,6 +368,17 @@ public class ClientEmptyEmailRepo : IClientRepository
 
     public async Task<IReadOnlyList<Client>> ListAsync(CancellationToken cancellationToken = default) =>
         await _inner.ListAsync(cancellationToken);
+
+    public async Task<Client?> GetByIdAsync(Guid id, Guid workspaceId, CancellationToken cancellationToken = default)
+    {
+        var client = await _inner.GetByIdAsync(id, workspaceId, cancellationToken);
+        if (client is not null && client.Id == _targetId)
+        {
+            var field = typeof(Client).GetField("<Email>k__BackingField", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            field?.SetValue(client, "");
+        }
+        return client;
+    }
 }
 
 

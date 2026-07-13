@@ -29,4 +29,12 @@ public class EfReminderRepository : IReminderRepository
             .AsNoTracking()
             .ToListAsync(cancellationToken);
     }
+
+    public async Task<IReadOnlyList<Reminder>> ListByInvoiceAsync(Guid invoiceId, Guid workspaceId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Set<Reminder>()
+            .Where(r => r.WorkspaceId == workspaceId && r.InvoiceId == invoiceId)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+    }
 }

@@ -51,47 +51,50 @@ public class AutomaticReminderBackgroundService : BackgroundService
         var utcNow = DateTime.UtcNow;
         _logger.LogDebug("Starting automatic reminder cycle at {UtcNow}.", utcNow);
 
-        using (var syncScope = _scopeFactory.CreateScope())
+        List<Guid> workspaceIds;
+        using (var scope = _scopeFactory.CreateScope())
         {
-            var syncService = syncScope.ServiceProvider.GetRequiredService<InvoiceStatusSyncService>();
-            var syncCount = await syncService.SyncOverdueStatusAsync(utcNow, cancellationToken);
-            if (syncCount > 0)
-            {
-                _logger.LogInformation(
-                    "Overdue sync: {Count} invoice(s) transitioned to Overdue.", syncCount);
-            }
+            var dbContext = scope.ServiceProvider.GetRequiredService<InvoiceFlowDbContext>();
+            workspaceIds = await dbContext.Workspaces
+                .Select(w => w.Id)
+                .ToListAsync(cancellationToken);
         }
 
-        using var scope = _scopeFactory.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<InvoiceFlowDbContext>();
-        var workspaceIds = await dbContext.Workspaces
-            .Select(w => w.Id)
-            .ToListAsync(cancellationToken);
-
+        var totalSynced = 0;
         var totalSent = 0;
-        var workspaceCount = 0;
+        var processedCount = 0;
+
         foreach (var workspaceId in workspaceIds)
         {
-            workspaceCount++;
+            processedCount++;
             try
             {
-                using var wsScope = _scopeFactory.CreateScope();
-                using var _ = CurrentWorkspaceService.PushWorkspace(workspaceId);
+                using var scope = _scopeFactory.CreateScope();
 
-                var service = wsScope.ServiceProvider.GetRequiredService<AutomaticReminderService>();
-                var count = await service.SendAutoRemindersAsync(utcNow, cancellationToken);
-                totalSent += count;
+                var syncService = scope.ServiceProvider.GetRequiredService<InvoiceStatusSyncService>();
+                var syncCount = await syncService.SyncOverdueStatusAsync(workspaceId, utcNow, cancellationToken);
+                if (syncCount > 0)
+                {
+                    _logger.LogInformation(
+                        "Workspace {WorkspaceIndex}/{WorkspaceTotal} (Id={WorkspaceId}): {Count} invoice(s) transitioned to Overdue.",
+                        processedCount, workspaceIds.Count, workspaceId, syncCount);
+                    totalSynced += syncCount;
+                }
+
+                var reminderService = scope.ServiceProvider.GetRequiredService<AutomaticReminderService>();
+                var sentCount = await reminderService.SendAutoRemindersAsync(workspaceId, utcNow, cancellationToken);
+                totalSent += sentCount;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex,
-                    "Error processing automatic reminders for workspace {WorkspaceIndex}/{WorkspaceTotal} (Id={WorkspaceId}).",
-                    workspaceCount, workspaceIds.Count, workspaceId);
+                    "Error processing workspace {WorkspaceIndex}/{WorkspaceTotal} (Id={WorkspaceId}).",
+                    processedCount, workspaceIds.Count, workspaceId);
             }
         }
 
         _logger.LogInformation(
-            "Reminder cycle complete. Workspaces checked: {WorkspaceCount}, reminders sent: {TotalSent}.",
-            workspaceIds.Count, totalSent);
+            "Reminder cycle complete. Workspaces checked: {WorkspaceCount}, overdue synced: {TotalSynced}, reminders sent: {TotalSent}.",
+            workspaceIds.Count, totalSynced, totalSent);
     }
 }

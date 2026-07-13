@@ -86,4 +86,22 @@ public class EfInvoiceRepository : IInvoiceRepository
             .Max();
         return $"{prefix}{(maxSeq + 1):D4}";
     }
+
+    public async Task<IReadOnlyList<Invoice>> ListAllAsync(Guid workspaceId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Invoices
+            .Where(i => i.WorkspaceId == workspaceId)
+            .Include(i => i.LineItems)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Invoice>> GetOverdueCandidatesAsync(Guid workspaceId, DateTime utcNow, CancellationToken cancellationToken = default)
+    {
+        return await _context.Invoices
+            .Where(i => i.WorkspaceId == workspaceId
+                && i.Status == InvoiceStatus.Issued
+                && i.DueDateUtc < utcNow)
+            .ToListAsync(cancellationToken);
+    }
 }
