@@ -197,4 +197,158 @@ public class InvoiceService
                 .ToList()
                 .AsReadOnly()
         };
+
+    public async Task<Guid> CreateInvoiceDraftAsync(
+        Guid workspaceId,
+        Guid clientId,
+        string? number,
+        DateTime issueDateUtc,
+        DateTime dueDateUtc,
+        string currency,
+        string? notes,
+        CancellationToken cancellationToken = default)
+    {
+        if (clientId == Guid.Empty)
+            throw new ArgumentException("Client ID cannot be empty.", nameof(clientId));
+
+        if (string.IsNullOrWhiteSpace(number))
+            number = await _invoiceRepository.GetNextInvoiceNumberAsync(workspaceId, cancellationToken);
+
+        ArgumentException.ThrowIfNullOrWhiteSpace(currency);
+
+        var clientExists = await _clientRepository.GetByIdAsync(clientId, workspaceId, cancellationToken);
+        if (clientExists is null)
+            throw new InvalidOperationException($"Client with ID '{clientId}' not found.");
+
+        var invoice = new Invoice(workspaceId, clientId, number, issueDateUtc, dueDateUtc, currency, notes);
+        await _invoiceRepository.AddAsync(invoice, cancellationToken);
+        return invoice.Id;
+    }
+
+    public async Task<InvoiceDto?> GetInvoiceAsync(Guid id, Guid workspaceId, CancellationToken cancellationToken = default)
+    {
+        var invoice = await _invoiceRepository.GetByIdAsync(id, workspaceId, cancellationToken);
+        return invoice is not null ? MapToDto(invoice) : null;
+    }
+
+    public async Task<IReadOnlyList<InvoiceDto>> GetAllInvoicesAsync(
+        Guid workspaceId,
+        Guid? clientId = null,
+        InvoiceStatus? status = null,
+        CancellationToken cancellationToken = default)
+    {
+        var invoices = await _invoiceRepository.ListAllAsync(workspaceId, cancellationToken);
+
+        if (clientId.HasValue)
+            invoices = invoices.Where(i => i.ClientId == clientId.Value).ToList();
+
+        if (status.HasValue)
+            invoices = invoices.Where(i => i.Status == status.Value).ToList();
+
+        return invoices.Select(MapToDto).ToList().AsReadOnly();
+    }
+
+    public async Task<IReadOnlyList<InvoiceDto>> GetClientInvoicesAsync(
+        Guid clientId,
+        Guid workspaceId,
+        CancellationToken cancellationToken = default)
+    {
+        var invoices = await _invoiceRepository.ListByClientAsync(clientId, workspaceId, cancellationToken);
+        return invoices.Select(MapToDto).ToList().AsReadOnly();
+    }
+
+    public async Task IssueInvoiceAsync(Guid id, Guid workspaceId, CancellationToken cancellationToken = default)
+    {
+        var invoice = await _invoiceRepository.GetByIdAsync(id, workspaceId, cancellationToken);
+        if (invoice is null)
+            throw new InvalidOperationException($"Invoice with ID '{id}' not found.");
+
+        invoice.Issue();
+        await _invoiceRepository.UpdateAsync(invoice, cancellationToken);
+    }
+
+    public async Task MarkInvoicePaidAsync(Guid id, Guid workspaceId, CancellationToken cancellationToken = default)
+    {
+        var invoice = await _invoiceRepository.GetByIdAsync(id, workspaceId, cancellationToken);
+        if (invoice is null)
+            throw new InvalidOperationException($"Invoice with ID '{id}' not found.");
+
+        invoice.MarkPaid();
+        await _invoiceRepository.UpdateAsync(invoice, cancellationToken);
+    }
+
+    public async Task MarkInvoiceOverdueAsync(Guid id, Guid workspaceId, CancellationToken cancellationToken = default)
+    {
+        var invoice = await _invoiceRepository.GetByIdAsync(id, workspaceId, cancellationToken);
+        if (invoice is null)
+            throw new InvalidOperationException($"Invoice with ID '{id}' not found.");
+
+        invoice.MarkOverdue();
+        await _invoiceRepository.UpdateAsync(invoice, cancellationToken);
+    }
+
+    public async Task CancelInvoiceAsync(Guid id, Guid workspaceId, CancellationToken cancellationToken = default)
+    {
+        var invoice = await _invoiceRepository.GetByIdAsync(id, workspaceId, cancellationToken);
+        if (invoice is null)
+            throw new InvalidOperationException($"Invoice with ID '{id}' not found.");
+
+        invoice.Cancel();
+        await _invoiceRepository.UpdateAsync(invoice, cancellationToken);
+    }
+
+    public async Task<int> AddLineItemAsync(
+        Guid invoiceId,
+        Guid workspaceId,
+        string description,
+        decimal quantity,
+        decimal unitPrice,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(description);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(quantity);
+        ArgumentOutOfRangeException.ThrowIfNegative(unitPrice);
+
+        var invoice = await _invoiceRepository.GetByIdAsync(invoiceId, workspaceId, cancellationToken)
+            ?? throw new InvalidOperationException($"Invoice with ID '{invoiceId}' not found.");
+
+        invoice.AddLineItem(description, quantity, unitPrice);
+        await _invoiceRepository.UpdateAsync(invoice, cancellationToken);
+
+        var added = invoice.LineItems.Last();
+        return added.Id;
+    }
+
+    public async Task UpdateLineItemAsync(
+        Guid invoiceId,
+        Guid workspaceId,
+        int lineItemId,
+        string description,
+        decimal quantity,
+        decimal unitPrice,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(description);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(quantity);
+        ArgumentOutOfRangeException.ThrowIfNegative(unitPrice);
+
+        var invoice = await _invoiceRepository.GetByIdAsync(invoiceId, workspaceId, cancellationToken)
+            ?? throw new InvalidOperationException($"Invoice with ID '{invoiceId}' not found.");
+
+        invoice.UpdateLineItem(lineItemId, description, quantity, unitPrice);
+        await _invoiceRepository.UpdateAsync(invoice, cancellationToken);
+    }
+
+    public async Task RemoveLineItemAsync(
+        Guid invoiceId,
+        Guid workspaceId,
+        int lineItemId,
+        CancellationToken cancellationToken = default)
+    {
+        var invoice = await _invoiceRepository.GetByIdAsync(invoiceId, workspaceId, cancellationToken)
+            ?? throw new InvalidOperationException($"Invoice with ID '{invoiceId}' not found.");
+
+        invoice.RemoveLineItem(lineItemId);
+        await _invoiceRepository.UpdateAsync(invoice, cancellationToken);
+    }
 }

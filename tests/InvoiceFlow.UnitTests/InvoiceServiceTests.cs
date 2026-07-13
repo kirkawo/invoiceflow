@@ -213,7 +213,7 @@ public class InvoiceServiceTests
         await _service.CreateInvoiceDraftAsync(client1Id, "INV-001", issueDate, issueDate.AddDays(30), "USD", null);
         await _service.CreateInvoiceDraftAsync(client2Id, "INV-002", issueDate, issueDate.AddDays(30), "USD", null);
 
-        var invoices = await _service.GetAllInvoicesAsync(client1Id);
+        var invoices = await _service.GetAllInvoicesAsync(clientId: client1Id);
 
         Assert.Single(invoices);
         Assert.Equal("INV-001", invoices[0].Number);
@@ -529,5 +529,24 @@ public class FakeInvoiceRepository : IInvoiceRepository
                 .Where(i => i.WorkspaceId == workspaceId && i.Status == InvoiceStatus.Issued && i.DueDateUtc < utcNow)
                 .ToList()
                 .AsReadOnly());
+    }
+
+    public Task<Invoice?> GetByIdAsync(Guid id, Guid workspaceId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(_store.TryGetValue(id, out var invoice) && invoice.WorkspaceId == workspaceId ? invoice : null);
+
+    public Task<IReadOnlyList<Invoice>> ListByClientAsync(Guid clientId, Guid workspaceId, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<Invoice>>(
+            _store.Values.Where(i => i.ClientId == clientId && i.WorkspaceId == workspaceId).ToList().AsReadOnly());
+
+    public Task<string> GetNextInvoiceNumberAsync(Guid workspaceId, CancellationToken cancellationToken = default)
+    {
+        var year = DateTime.UtcNow.Year;
+        var prefix = $"INV-{year}-";
+        var maxSeq = _store.Values
+            .Where(i => i.WorkspaceId == workspaceId && i.Number.StartsWith(prefix))
+            .Select(i => int.TryParse(i.Number[prefix.Length..], out var seq) ? seq : 0)
+            .DefaultIfEmpty(0)
+            .Max();
+        return Task.FromResult($"{prefix}{(maxSeq + 1):D4}");
     }
 }

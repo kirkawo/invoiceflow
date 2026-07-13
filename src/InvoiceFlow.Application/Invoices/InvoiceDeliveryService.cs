@@ -110,6 +110,83 @@ public class InvoiceDeliveryService
             .AsReadOnly();
     }
 
+    public async Task<ReminderDto> SendInvoiceEmailAsync(
+        Guid invoiceId,
+        Guid workspaceId,
+        string? customMessage = null,
+        CancellationToken cancellationToken = default)
+    {
+        var invoice = await _invoiceRepository.GetByIdAsync(invoiceId, workspaceId, cancellationToken)
+            ?? throw new InvalidOperationException($"Invoice with ID '{invoiceId}' not found.");
+
+        if (invoice.WorkspaceId != workspaceId)
+            throw new InvalidOperationException($"Invoice with ID '{invoiceId}' not found.");
+
+        if (invoice.Status is InvoiceStatus.Draft or InvoiceStatus.Cancelled)
+            throw new InvalidOperationException($"Cannot send an invoice in '{invoice.Status}' status.");
+
+        if (invoice.LineItems.Count == 0)
+            throw new InvalidOperationException("Cannot send an invoice without line items.");
+
+        var client = await _clientRepository.GetByIdAsync(invoice.ClientId, workspaceId, cancellationToken)
+            ?? throw new InvalidOperationException($"Client with ID '{invoice.ClientId}' not found.");
+
+        if (string.IsNullOrWhiteSpace(client.Email))
+            throw new InvalidOperationException("Cannot send invoice: client has no email address.");
+
+        var publicBase = !string.IsNullOrWhiteSpace(_appOptions.PublicBaseUrl)
+            ? _appOptions.PublicBaseUrl.TrimEnd('/')
+            : _appOptions.BaseUrl.TrimEnd('/');
+
+        var publicUrl = $"{publicBase}/invoices/public/{invoice.PublicId}";
+
+        var subject = $"Invoice {invoice.Number} from InvoiceFlow";
+        var body = BuildEmailBody(invoice, client, publicUrl, customMessage);
+
+        var success = await _emailSender.TrySendAsync(client.Email, subject, body, cancellationToken);
+
+        var reminder = new Reminder(
+            workspaceId,
+            invoiceId,
+            ReminderType.InvoiceSent,
+            ReminderChannel.Email,
+            client.Email,
+            subject,
+            success ? ReminderStatus.Sent : ReminderStatus.Failed,
+            success ? null : "Email delivery failed.");
+
+        await _reminderRepository.AddAsync(reminder, cancellationToken);
+
+        if (success)
+        {
+            _logger.LogInformation(
+                "Invoice email sent for Invoice {InvoiceNumber} (Id={InvoiceId}) to {Email}.",
+                invoice.Number, invoiceId, client.Email);
+        }
+        else
+        {
+            _logger.LogWarning(
+                "Invoice email failed for Invoice {InvoiceNumber} (Id={InvoiceId}) to {Email}.",
+                invoice.Number, invoiceId, client.Email);
+        }
+
+        return MapToDto(reminder);
+    }
+
+    public async Task<IReadOnlyList<ReminderDto>> GetDeliveryHistoryAsync(
+        Guid invoiceId,
+        Guid workspaceId,
+        CancellationToken cancellationToken = default)
+    {
+        var allReminders = await _reminderRepository.ListByInvoiceAsync(invoiceId, workspaceId, cancellationToken);
+        return allReminders
+            .Where(r => r.Type == ReminderType.InvoiceSent)
+            .OrderByDescending(r => r.CreatedAtUtc)
+            .Select(MapToDto)
+            .ToList()
+            .AsReadOnly();
+    }
+
     private static string BuildEmailBody(Invoice invoice, Client client, string publicUrl, string? customMessage)
     {
         var lines = new List<string>

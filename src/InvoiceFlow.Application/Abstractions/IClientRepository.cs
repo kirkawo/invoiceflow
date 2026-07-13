@@ -10,4 +10,5 @@ public interface IClientRepository
     Task<IReadOnlyList<Client>> ListAsync(CancellationToken cancellationToken = default);
 
     Task<Client?> GetByIdAsync(Guid id, Guid workspaceId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<Client>> ListAsync(Guid workspaceId, CancellationToken cancellationToken = default);
 }

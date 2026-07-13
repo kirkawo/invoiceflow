@@ -109,9 +109,10 @@
             {
                 try
                 {
-                    clients = await ClientService.GetClientsAsync();
+                    var workspaceId = await WorkspaceHelper.ResolveWorkspaceIdAsync(AuthStateProvider);
+                    clients = await ClientService.GetClientsAsync(workspaceId);
 
-                    var allInvoices = await InvoiceService.GetAllInvoicesAsync();
+                    var allInvoices = await InvoiceService.GetAllInvoicesAsync(workspaceId);
                     var today = DateOnly.FromDateTime(DateTime.UtcNow);
                     overdueCount = allInvoices.Count(i => i.Status == InvoiceStatus.Overdue);
                     upcomingCount = allInvoices.Count(i =>

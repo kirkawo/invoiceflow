@@ -41,4 +41,22 @@ public class ClientService
             CreatedAtUtc = client.CreatedAtUtc,
             IsArchived = client.IsArchived
         };
+
+    public async Task<Guid> CreateClientAsync(
+        Guid workspaceId,
+        string name,
+        string email,
+        string? companyName,
+        CancellationToken cancellationToken = default)
+    {
+        var client = new Client(workspaceId, name, email, companyName);
+        await _clientRepository.AddAsync(client, cancellationToken);
+        return client.Id;
+    }
+
+    public async Task<IReadOnlyList<ClientDto>> GetClientsAsync(Guid workspaceId, CancellationToken cancellationToken = default)
+    {
+        var clients = await _clientRepository.ListAsync(workspaceId, cancellationToken);
+        return clients.Select(MapToDto).ToList().AsReadOnly();
+    }
 }

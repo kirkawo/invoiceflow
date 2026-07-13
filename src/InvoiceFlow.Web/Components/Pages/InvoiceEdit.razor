@@ -9,6 +9,7 @@
 @inject IOptions<AppOptions> AppOptionsAccessor
 @inject InvoiceDeliveryService InvoiceDeliveryService
 @inject ILogger<InvoiceEdit> EditLogger
+@inject AuthenticationStateProvider AuthStateProvider
 
 <PageTitle>Invoice @invoice?.Number - InvoiceFlow</PageTitle>
 
@@ -422,6 +423,7 @@ else
     private bool saving;
     private bool copied;
     private bool ShowAddForm;
+    private Guid _workspaceId;
 
     private bool sendingReminder;
     private string? reminderFeedback;
@@ -453,6 +455,7 @@ else
     {
         try
         {
+            _workspaceId = await WorkspaceHelper.ResolveWorkspaceIdAsync(AuthStateProvider);
             await LoadInvoiceAsync();
         }
         catch (Exception ex)
@@ -463,14 +466,14 @@ else
 
     private async Task LoadInvoiceAsync()
     {
-        invoice = await InvoiceService.GetInvoiceAsync(Id);
+        invoice = await InvoiceService.GetInvoiceAsync(Id, _workspaceId);
         if (invoice is null)
         {
             error = "Invoice not found.";
             return;
         }
 
-        var clients = await ClientService.GetClientsAsync();
+        var clients = await ClientService.GetClientsAsync(_workspaceId);
         var matchedClient = clients.FirstOrDefault(c => c.Id == invoice.ClientId);
         clientName = matchedClient?.Name ?? "Unknown";
         clientEmail = matchedClient?.Email;
@@ -511,7 +514,7 @@ else
         saving = true;
         try
         {
-            await InvoiceService.AddLineItemAsync(Id, NewDescription, NewQuantity, NewUnitPrice);
+            await InvoiceService.AddLineItemAsync(Id, _workspaceId, NewDescription, NewQuantity, NewUnitPrice);
             NewDescription = string.Empty;
             NewQuantity = 1;
             NewUnitPrice = 0;
@@ -564,7 +567,7 @@ else
         saving = true;
         try
         {
-            await InvoiceService.UpdateLineItemAsync(Id, lineItemId, EditDescription, EditQuantity, EditUnitPrice);
+            await InvoiceService.UpdateLineItemAsync(Id, _workspaceId, lineItemId, EditDescription, EditQuantity, EditUnitPrice);
             EditingLineItemId = 0;
             await LoadInvoiceAsync();
         }
@@ -586,7 +589,7 @@ else
         saving = true;
         try
         {
-            await InvoiceService.RemoveLineItemAsync(Id, lineItemId);
+            await InvoiceService.RemoveLineItemAsync(Id, _workspaceId, lineItemId);
             await LoadInvoiceAsync();
         }
         catch (Exception ex)
@@ -613,7 +616,7 @@ else
         loadingReminders = true;
         try
         {
-            reminders = await ReminderService.GetReminderHistoryAsync(invoice.Id);
+            reminders = await ReminderService.GetReminderHistoryAsync(invoice.Id, _workspaceId);
         }
         finally
         {
@@ -627,7 +630,7 @@ else
         loadingDeliveries = true;
         try
         {
-            deliveries = await InvoiceDeliveryService.GetDeliveryHistoryAsync(invoice.Id);
+            deliveries = await InvoiceDeliveryService.GetDeliveryHistoryAsync(invoice.Id, _workspaceId);
         }
         finally
         {
@@ -643,7 +646,7 @@ else
         try
         {
             var message = string.IsNullOrWhiteSpace(DeliveryCustomMessage) ? null : DeliveryCustomMessage;
-            await InvoiceDeliveryService.SendInvoiceEmailAsync(invoice.Id, message);
+            await InvoiceDeliveryService.SendInvoiceEmailAsync(invoice.Id, _workspaceId, message);
             deliveryFeedback = "Invoice sent successfully.";
             deliveryFeedbackCssClass = "alert-success";
             DeliveryCustomMessage = string.Empty;
@@ -670,7 +673,7 @@ else
         reminderFeedback = null;
         try
         {
-            await ReminderService.SendManualReminderAsync(invoice.Id, string.IsNullOrWhiteSpace(ReminderCustomMessage) ? null : ReminderCustomMessage);
+            await ReminderService.SendManualReminderAsync(invoice.Id, _workspaceId, string.IsNullOrWhiteSpace(ReminderCustomMessage) ? null : ReminderCustomMessage);
             reminderFeedback = "Reminder sent successfully.";
             reminderFeedbackCssClass = "alert-success";
             ReminderCustomMessage = string.Empty;

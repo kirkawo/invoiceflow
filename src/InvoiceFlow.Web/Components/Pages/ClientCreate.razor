@@ -3,6 +3,7 @@
 
 @inject ClientService ClientService
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
 
 <PageTitle>New Client - InvoiceFlow</PageTitle>
 
@@ -42,6 +43,12 @@
     private ClientCreateModel model = new();
     private string? error;
     private bool saving;
+    private Guid _workspaceId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _workspaceId = await WorkspaceHelper.ResolveWorkspaceIdAsync(AuthStateProvider);
+    }
 
     private async Task HandleSubmit()
     {
@@ -50,7 +57,7 @@
 
         try
         {
-            await ClientService.CreateClientAsync(model.Name, model.Email, model.CompanyName);
+            await ClientService.CreateClientAsync(_workspaceId, model.Name, model.Email, model.CompanyName);
             Navigation.NavigateTo("/clients");
         }
         catch (Exception ex)

@@ -63,4 +63,23 @@ public class InMemoryInvoiceRepository : IInvoiceRepository
                 .Where(i => i.WorkspaceId == workspaceId && i.Status == InvoiceStatus.Issued && i.DueDateUtc < utcNow)
                 .ToList()
                 .AsReadOnly());
+
+    public Task<Invoice?> GetByIdAsync(Guid id, Guid workspaceId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(_store.TryGetValue(id, out var invoice) && invoice.WorkspaceId == workspaceId ? invoice : null);
+
+    public Task<IReadOnlyList<Invoice>> ListByClientAsync(Guid clientId, Guid workspaceId, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<Invoice>>(
+            _store.Values.Where(i => i.ClientId == clientId && i.WorkspaceId == workspaceId).ToList().AsReadOnly());
+
+    public Task<string> GetNextInvoiceNumberAsync(Guid workspaceId, CancellationToken cancellationToken = default)
+    {
+        var year = DateTime.UtcNow.Year;
+        var prefix = $"INV-{year}-";
+        var maxSeq = _store.Values
+            .Where(i => i.WorkspaceId == workspaceId && i.Number.StartsWith(prefix))
+            .Select(i => int.TryParse(i.Number[prefix.Length..], out var seq) ? seq : 0)
+            .DefaultIfEmpty(0)
+            .Max();
+        return Task.FromResult($"{prefix}{(maxSeq + 1):D4}");
+    }
 }

@@ -3,6 +3,7 @@
 
 @inject InvoiceService InvoiceService
 @inject ClientService ClientService
+@inject AuthenticationStateProvider AuthStateProvider
 
 <PageTitle>Client Invoices - InvoiceFlow</PageTitle>
 
@@ -107,6 +108,7 @@ else
     private string? clientName;
     private string? error;
     private HashSet<Guid> loadingActions = [];
+    private Guid _workspaceId;
 
     [Parameter]
     public Guid ClientId { get; set; }
@@ -115,6 +117,7 @@ else
     {
         try
         {
+            _workspaceId = await WorkspaceHelper.ResolveWorkspaceIdAsync(AuthStateProvider);
             await LoadClientNameAsync();
             await LoadInvoicesAsync();
         }
@@ -126,13 +129,13 @@ else
 
     private async Task LoadClientNameAsync()
     {
-        var allClients = await ClientService.GetClientsAsync();
+        var allClients = await ClientService.GetClientsAsync(_workspaceId);
         clientName = allClients.FirstOrDefault(c => c.Id == ClientId)?.Name ?? "Unknown";
     }
 
     private async Task LoadInvoicesAsync()
     {
-        var loaded = await InvoiceService.GetClientInvoicesAsync(ClientId);
+        var loaded = await InvoiceService.GetClientInvoicesAsync(ClientId, _workspaceId);
         invoices = loaded.OrderByDescending(i => i.DueDateUtc).ToList().AsReadOnly();
     }
 
@@ -157,16 +160,16 @@ else
     }
 
     private Task IssueInvoice(Guid id) =>
-        ExecuteAction(id, () => InvoiceService.IssueInvoiceAsync(id));
+        ExecuteAction(id, () => InvoiceService.IssueInvoiceAsync(id, _workspaceId));
 
     private Task MarkPaid(Guid id) =>
-        ExecuteAction(id, () => InvoiceService.MarkInvoicePaidAsync(id));
+        ExecuteAction(id, () => InvoiceService.MarkInvoicePaidAsync(id, _workspaceId));
 
     private Task MarkOverdue(Guid id) =>
-        ExecuteAction(id, () => InvoiceService.MarkInvoiceOverdueAsync(id));
+        ExecuteAction(id, () => InvoiceService.MarkInvoiceOverdueAsync(id, _workspaceId));
 
     private Task CancelInvoice(Guid id) =>
-        ExecuteAction(id, () => InvoiceService.CancelInvoiceAsync(id));
+        ExecuteAction(id, () => InvoiceService.CancelInvoiceAsync(id, _workspaceId));
 
     private DateOnly _today => DateOnly.FromDateTime(DateTime.UtcNow);
 

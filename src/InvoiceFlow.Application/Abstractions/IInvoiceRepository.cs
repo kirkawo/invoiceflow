@@ -15,4 +15,7 @@ public interface IInvoiceRepository
 
     Task<IReadOnlyList<Invoice>> ListAllAsync(Guid workspaceId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Invoice>> GetOverdueCandidatesAsync(Guid workspaceId, DateTime utcNow, CancellationToken cancellationToken = default);
+    Task<Invoice?> GetByIdAsync(Guid id, Guid workspaceId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<Invoice>> ListByClientAsync(Guid clientId, Guid workspaceId, CancellationToken cancellationToken = default);
+    Task<string> GetNextInvoiceNumberAsync(Guid workspaceId, CancellationToken cancellationToken = default);
 }

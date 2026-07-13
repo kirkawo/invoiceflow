@@ -5,6 +5,7 @@
 @inject InvoiceService InvoiceService
 @inject ClientService ClientService
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
 
 <PageTitle>New Invoice - InvoiceFlow</PageTitle>
 
@@ -64,6 +65,7 @@
     private InvoiceCreateModel model = new();
     private string? error;
     private bool saving;
+    private Guid _workspaceId;
 
     [Parameter]
     public Guid? ClientId { get; set; }
@@ -72,7 +74,8 @@
     {
         try
         {
-            clients = await ClientService.GetClientsAsync();
+            _workspaceId = await WorkspaceHelper.ResolveWorkspaceIdAsync(AuthStateProvider);
+            clients = await ClientService.GetClientsAsync(_workspaceId);
 
             if (ClientId.HasValue && clients is not null)
             {
@@ -101,6 +104,7 @@
             var clientId = model.ClientId!.Value;
 
             await InvoiceService.CreateInvoiceDraftAsync(
+                _workspaceId,
                 clientId,
                 null,
                 issueDate,

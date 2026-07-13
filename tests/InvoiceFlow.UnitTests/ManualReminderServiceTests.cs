@@ -336,6 +336,9 @@ public class ClientNoEmailRepo : IClientRepository
         }
         return client;
     }
+
+    public async Task<IReadOnlyList<Client>> ListAsync(Guid workspaceId, CancellationToken cancellationToken = default) =>
+        await _inner.ListAsync(workspaceId, cancellationToken);
 }
 
 public class ClientEmptyEmailRepo : IClientRepository
@@ -379,6 +382,9 @@ public class ClientEmptyEmailRepo : IClientRepository
         }
         return client;
     }
+
+    public async Task<IReadOnlyList<Client>> ListAsync(Guid workspaceId, CancellationToken cancellationToken = default) =>
+        await _inner.ListAsync(workspaceId, cancellationToken);
 }
 
 

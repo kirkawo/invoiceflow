@@ -4,6 +4,7 @@
 @inject InvoiceService InvoiceService
 @inject ClientService ClientService
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
 
 <PageTitle>Invoices - InvoiceFlow</PageTitle>
 
@@ -151,12 +152,14 @@ else
     private string? error;
     private string selectedClientId = "";
     private string selectedStatus = "";
+    private Guid _workspaceId;
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            clients = await ClientService.GetClientsAsync();
+            _workspaceId = await WorkspaceHelper.ResolveWorkspaceIdAsync(AuthStateProvider);
+            clients = await ClientService.GetClientsAsync(_workspaceId);
             await LoadInvoicesAsync();
         }
         catch (Exception ex)
@@ -178,7 +181,7 @@ else
 
         try
         {
-            invoices = await InvoiceService.GetAllInvoicesAsync(clientId, status);
+            invoices = await InvoiceService.GetAllInvoicesAsync(_workspaceId, clientId, status);
             error = null;
         }
         catch (Exception ex)

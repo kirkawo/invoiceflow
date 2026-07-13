@@ -104,4 +104,35 @@ public class EfInvoiceRepository : IInvoiceRepository
                 && i.DueDateUtc < utcNow)
             .ToListAsync(cancellationToken);
     }
+
+    public async Task<Invoice?> GetByIdAsync(Guid id, Guid workspaceId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Invoices
+            .Include(i => i.LineItems)
+            .FirstOrDefaultAsync(i => i.WorkspaceId == workspaceId && i.Id == id, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Invoice>> ListByClientAsync(Guid clientId, Guid workspaceId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Invoices
+            .Where(i => i.WorkspaceId == workspaceId && i.ClientId == clientId)
+            .Include(i => i.LineItems)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<string> GetNextInvoiceNumberAsync(Guid workspaceId, CancellationToken cancellationToken = default)
+    {
+        var year = DateTime.UtcNow.Year;
+        var prefix = $"INV-{year}-";
+        var numbers = await _context.Invoices
+            .Where(i => i.WorkspaceId == workspaceId && i.Number.StartsWith(prefix))
+            .Select(i => i.Number)
+            .ToListAsync(cancellationToken);
+        var maxSeq = numbers
+            .Select(n => n.Length > prefix.Length && int.TryParse(n[prefix.Length..], out var seq) ? seq : 0)
+            .DefaultIfEmpty(0)
+            .Max();
+        return $"{prefix}{(maxSeq + 1):D4}";
+    }
 }

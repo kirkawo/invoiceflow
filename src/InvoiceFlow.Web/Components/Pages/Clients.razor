@@ -2,6 +2,7 @@
 @attribute [Authorize]
 
 @inject ClientService ClientService
+@inject AuthenticationStateProvider AuthStateProvider
 
 <PageTitle>Clients - InvoiceFlow</PageTitle>
 
@@ -96,7 +97,8 @@ else
     {
         try
         {
-            clients = await ClientService.GetClientsAsync();
+            var workspaceId = await WorkspaceHelper.ResolveWorkspaceIdAsync(AuthStateProvider);
+            clients = await ClientService.GetClientsAsync(workspaceId);
         }
         catch (Exception ex)
         {
