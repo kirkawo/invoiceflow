@@ -25,6 +25,7 @@ public class AuthController : Controller
     }
 
     [HttpGet]
+    [AllowAnonymous]
     public IActionResult Login(string? returnUrl = null)
     {
         ViewBag.ReturnUrl = returnUrl ?? "/";
@@ -32,6 +33,7 @@ public class AuthController : Controller
     }
 
     [HttpPost]
+    [AllowAnonymous]
     public async Task<IActionResult> Login(LoginRequest request)
     {
         var returnUrl = string.IsNullOrWhiteSpace(request.ReturnUrl) || !Uri.IsWellFormedUriString(request.ReturnUrl, UriKind.Relative)
@@ -58,6 +60,7 @@ public class AuthController : Controller
     }
 
     [HttpGet]
+    [AllowAnonymous]
     public IActionResult Register(string? returnUrl = null)
     {
         ViewBag.ReturnUrl = returnUrl ?? "/";
@@ -65,6 +68,7 @@ public class AuthController : Controller
     }
 
     [HttpPost]
+    [AllowAnonymous]
     public async Task<IActionResult> Register(RegisterRequest request)
     {
         var returnUrl = string.IsNullOrWhiteSpace(request.ReturnUrl) || !Uri.IsWellFormedUriString(request.ReturnUrl, UriKind.Relative)
