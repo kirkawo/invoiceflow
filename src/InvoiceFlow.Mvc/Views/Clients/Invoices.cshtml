@@ -1,0 +1,143 @@
+@using InvoiceFlow.Application.Invoices
+@{
+    ViewData["Title"] = "Client Invoices";
+    var invoices = (IReadOnlyList<InvoiceDto>)ViewBag.Invoices;
+    var clientName = (string)ViewBag.ClientName;
+    var clientId = (Guid)ViewBag.ClientId;
+    var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+    string StatusClass(InvoiceStatus status) => status switch
+    {
+        InvoiceStatus.Draft => "bg-secondary",
+        InvoiceStatus.Issued => "bg-primary",
+        InvoiceStatus.Paid => "bg-success",
+        InvoiceStatus.Overdue => "bg-warning text-dark",
+        InvoiceStatus.Cancelled => "bg-danger",
+        _ => "bg-secondary"
+    };
+}
+
+<h1>Invoices</h1>
+
+@if (ViewBag.Error != null)
+{
+    <div class="alert alert-danger">@ViewBag.Error</div>
+}
+
+<p class="lead mb-3">Client: <strong>@clientName</strong></p>
+
+<a asp-controller="Invoices" asp-action="Create" asp-route-clientId="@clientId" class="btn btn-primary mb-3">Create Invoice</a>
+
+@if (invoices.Count == 0)
+{
+    <div class="alert alert-info">No invoices for this client yet.</div>
+}
+else
+{
+    <div class="d-none d-md-block">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Number</th>
+                    <th>Status</th>
+                    <th>Currency</th>
+                    <th>Total</th>
+                    <th>Due Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var invoice in invoices)
+                {
+                    <tr>
+                        <td><a asp-controller="Invoices" asp-action="Details" asp-route-id="@invoice.Id">@invoice.Number</a></td>
+                        <td><span class="badge @StatusClass(invoice.Status)">@invoice.Status</span></td>
+                        <td>@invoice.Currency</td>
+                        <td>@invoice.Total.ToString("F2")</td>
+                        <td>@invoice.DueDateUtc.ToShortDateString()</td>
+                        <td>
+                            @if (invoice.Status == InvoiceStatus.Draft)
+                            {
+                                <a asp-controller="Invoices" asp-action="Details" asp-route-id="@invoice.Id" class="btn btn-sm btn-outline-primary">Edit</a>
+                                <form method="post" asp-controller="Invoices" asp-action="Issue" asp-route-id="@invoice.Id" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm btn-primary">Issue</button>
+                                </form>
+                                <form method="post" asp-controller="Invoices" asp-action="Cancel" asp-route-id="@invoice.Id" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm btn-danger">Cancel</button>
+                                </form>
+                            }
+                            else if (invoice.Status == InvoiceStatus.Issued)
+                            {
+                                <a asp-controller="Invoices" asp-action="Details" asp-route-id="@invoice.Id" class="btn btn-sm btn-outline-secondary">View</a>
+                                <form method="post" asp-controller="Invoices" asp-action="MarkPaid" asp-route-id="@invoice.Id" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm btn-success">Paid</button>
+                                </form>
+                                <form method="post" asp-controller="Invoices" asp-action="MarkOverdue" asp-route-id="@invoice.Id" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm btn-warning">Overdue</button>
+                                </form>
+                                <form method="post" asp-controller="Invoices" asp-action="Cancel" asp-route-id="@invoice.Id" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm btn-danger">Cancel</button>
+                                </form>
+                            }
+                            else if (invoice.Status == InvoiceStatus.Overdue)
+                            {
+                                <a asp-controller="Invoices" asp-action="Details" asp-route-id="@invoice.Id" class="btn btn-sm btn-outline-secondary">View</a>
+                                <form method="post" asp-controller="Invoices" asp-action="MarkPaid" asp-route-id="@invoice.Id" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm btn-success">Paid</button>
+                                </form>
+                                <form method="post" asp-controller="Invoices" asp-action="Cancel" asp-route-id="@invoice.Id" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm btn-danger">Cancel</button>
+                                </form>
+                            }
+                            else
+                            {
+                                <a asp-controller="Invoices" asp-action="Details" asp-route-id="@invoice.Id" class="btn btn-sm btn-outline-secondary">View</a>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="d-md-none">
+        @foreach (var invoice in invoices)
+        {
+            <div class="invoice-card">
+                <div class="card-row">
+                    <span class="card-label">Number</span>
+                    <span class="card-value"><a asp-controller="Invoices" asp-action="Details" asp-route-id="@invoice.Id">@invoice.Number</a></span>
+                </div>
+                <div class="card-row">
+                    <span class="card-label">Status</span>
+                    <span class="card-value"><span class="badge @StatusClass(invoice.Status)">@invoice.Status</span></span>
+                </div>
+                <div class="card-row">
+                    <span class="card-label">Amount</span>
+                    <span class="card-value">@invoice.Currency @invoice.Total.ToString("F2")</span>
+                </div>
+                <div class="card-row">
+                    <span class="card-label">Due</span>
+                    <span class="card-value">@invoice.DueDateUtc.ToShortDateString()</span>
+                </div>
+                <div class="card-actions">
+                    @if (invoice.Status == InvoiceStatus.Draft)
+                    {
+                        <a asp-controller="Invoices" asp-action="Details" asp-route-id="@invoice.Id" class="btn btn-outline-primary">Edit</a>
+                    }
+                    else
+                    {
+                        <a asp-controller="Invoices" asp-action="Details" asp-route-id="@invoice.Id" class="btn btn-outline-secondary">View</a>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+}

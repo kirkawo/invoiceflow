@@ -59,6 +59,12 @@ builder.Services.ConfigureApplicationCookie(options =>
 
 builder.Services.AddAuthorization();
 
+builder.Services.AddAntiforgery(options =>
+{
+    options.Cookie.Name = "InvoiceFlow.Web.Antiforgery";
+    options.Cookie.HttpOnly = true;
+});
+
 builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
@@ -84,6 +90,7 @@ app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseAntiforgery();
 
 if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
 {

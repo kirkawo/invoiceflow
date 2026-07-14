@@ -1,4 +1,4 @@
-using InvoiceFlow.Domain;
+using System.Security.Claims;
 using InvoiceFlow.Infrastructure.Persistence;
 using InvoiceFlow.Mvc.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -7,26 +7,32 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace InvoiceFlow.Mvc.Controllers;
 
-[Route("api/[controller]")]
-[ApiController]
-public class AuthController : ControllerBase
+[Authorize]
+public class AuthController : Controller
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly InvoiceFlowDbContext _db;
 
     public AuthController(
-        UserManager<ApplicationUser> userManager,
-        SignInManager<ApplicationUser> signInManager,
-        InvoiceFlowDbContext db)
+        Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> userManager,
+        Microsoft.AspNetCore.Identity.SignInManager<ApplicationUser> signInManager,
+        Infrastructure.Persistence.InvoiceFlowDbContext db)
     {
         _userManager = userManager;
         _signInManager = signInManager;
         _db = db;
     }
 
-    [HttpPost("register")]
-    public async Task<IActionResult> Register([FromForm] RegisterRequest request)
+    [HttpGet]
+    public IActionResult Login(string? returnUrl = null)
+    {
+        ViewBag.ReturnUrl = returnUrl ?? "/";
+        return View();
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Login(LoginRequest request)
     {
         var returnUrl = string.IsNullOrWhiteSpace(request.ReturnUrl) || !Uri.IsWellFormedUriString(request.ReturnUrl, UriKind.Relative)
             ? "/"
@@ -34,26 +40,67 @@ public class AuthController : ControllerBase
 
         if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
         {
-            return Redirect($"/register?error={Uri.EscapeDataString("Email and password are required.")}&returnUrl={Uri.EscapeDataString(returnUrl)}");
+            ViewBag.Error = "Email and password are required.";
+            ViewBag.ReturnUrl = returnUrl;
+            return View();
+        }
+
+        var result = await _signInManager.PasswordSignInAsync(request.Email, request.Password, true, false);
+
+        if (result.Succeeded)
+        {
+            return Redirect(returnUrl);
+        }
+
+        ViewBag.Error = "Invalid email or password.";
+        ViewBag.ReturnUrl = returnUrl;
+        return View();
+    }
+
+    [HttpGet]
+    public IActionResult Register(string? returnUrl = null)
+    {
+        ViewBag.ReturnUrl = returnUrl ?? "/";
+        return View();
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Register(RegisterRequest request)
+    {
+        var returnUrl = string.IsNullOrWhiteSpace(request.ReturnUrl) || !Uri.IsWellFormedUriString(request.ReturnUrl, UriKind.Relative)
+            ? "/"
+            : request.ReturnUrl;
+
+        if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
+        {
+            ViewBag.Error = "Email and password are required.";
+            ViewBag.ReturnUrl = returnUrl;
+            return View();
         }
 
         if (request.Password != request.ConfirmPassword)
         {
-            return Redirect($"/register?error={Uri.EscapeDataString("Passwords do not match.")}&returnUrl={Uri.EscapeDataString(returnUrl)}");
+            ViewBag.Error = "Passwords do not match.";
+            ViewBag.ReturnUrl = returnUrl;
+            return View();
         }
 
         if (request.Password.Length < 6)
         {
-            return Redirect($"/register?error={Uri.EscapeDataString("Password must be at least 6 characters.")}&returnUrl={Uri.EscapeDataString(returnUrl)}");
+            ViewBag.Error = "Password must be at least 6 characters.";
+            ViewBag.ReturnUrl = returnUrl;
+            return View();
         }
 
         var existingUser = await _userManager.FindByEmailAsync(request.Email);
         if (existingUser is not null)
         {
-            return Redirect($"/register?error={Uri.EscapeDataString("An account with this email already exists.")}&returnUrl={Uri.EscapeDataString(returnUrl)}");
+            ViewBag.Error = "An account with this email already exists.";
+            ViewBag.ReturnUrl = returnUrl;
+            return View();
         }
 
-        var workspace = new Workspace($"{request.Email}'s Workspace");
+        var workspace = new Domain.Workspace($"{request.Email}'s Workspace");
         _db.Workspaces.Add(workspace);
         await _db.SaveChangesAsync();
 
@@ -70,41 +117,20 @@ public class AuthController : ControllerBase
             _db.Workspaces.Remove(workspace);
             await _db.SaveChangesAsync();
 
-            var errors = string.Join(" ", result.Errors.Select(e => e.Description));
-            return Redirect($"/register?error={Uri.EscapeDataString(errors)}&returnUrl={Uri.EscapeDataString(returnUrl)}");
+            ViewBag.Error = string.Join(" ", result.Errors.Select(e => e.Description));
+            ViewBag.ReturnUrl = returnUrl;
+            return View();
         }
 
         await _signInManager.SignInAsync(user, true);
         return Redirect(returnUrl);
     }
 
-    [HttpPost("login")]
-    public async Task<IActionResult> Login([FromForm] LoginRequest request)
-    {
-        var returnUrl = string.IsNullOrWhiteSpace(request.ReturnUrl) || !Uri.IsWellFormedUriString(request.ReturnUrl, UriKind.Relative)
-            ? "/"
-            : request.ReturnUrl;
-
-        if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
-        {
-            return Redirect($"/login?error={Uri.EscapeDataString("Email and password are required.")}&returnUrl={Uri.EscapeDataString(returnUrl)}");
-        }
-
-        var result = await _signInManager.PasswordSignInAsync(request.Email, request.Password, true, false);
-
-        if (result.Succeeded)
-        {
-            return Redirect(returnUrl);
-        }
-
-        return Redirect($"/login?error={Uri.EscapeDataString("Invalid email or password.")}&returnUrl={Uri.EscapeDataString(returnUrl)}");
-    }
-
-    [HttpPost("logout")]
+    [HttpPost]
     [Authorize]
     public async Task<IActionResult> Logout()
     {
         await _signInManager.SignOutAsync();
-        return Redirect("/login");
+        return RedirectToAction("Login");
     }
 }

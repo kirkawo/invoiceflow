@@ -1,0 +1,32 @@
+@{
+    ViewData["Title"] = "Create Client";
+}
+
+<h1>Create Client</h1>
+
+@if (ViewBag.Error != null)
+{
+    <div class="alert alert-danger">@ViewBag.Error</div>
+}
+
+<form method="post" asp-action="Create">
+    @Html.AntiForgeryToken()
+
+    <div class="mb-3">
+        <label for="Name" class="form-label">Name</label>
+        <input id="Name" name="Name" class="form-control" required />
+    </div>
+
+    <div class="mb-3">
+        <label for="Email" class="form-label">Email</label>
+        <input id="Email" name="Email" type="email" class="form-control" required />
+    </div>
+
+    <div class="mb-3">
+        <label for="CompanyName" class="form-label">Company Name</label>
+        <input id="CompanyName" name="CompanyName" class="form-control" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Create</button>
+    <a asp-action="Index" class="btn btn-outline-secondary ms-2">Cancel</a>
+</form>

@@ -1,0 +1,53 @@
+@{
+    ViewData["Title"] = "Create Invoice";
+    var clients = (IReadOnlyList<ClientDto>)ViewBag.Clients;
+    var preselectedClientId = ViewBag.PreselectedClientId as Guid?;
+}
+
+<h1>Create Invoice Draft</h1>
+
+@if (ViewBag.Error != null)
+{
+    <div class="alert alert-danger">@ViewBag.Error</div>
+}
+
+<form method="post" asp-action="Create">
+    @Html.AntiForgeryToken()
+
+    <div class="mb-3">
+        <label for="ClientId" class="form-label">Client</label>
+        <select id="ClientId" name="ClientId" class="form-select" @(preselectedClientId.HasValue ? "disabled" : "")>
+            <option value="">@(preselectedClientId.HasValue ? "" : "-- Select a client --")</option>
+            @foreach (var client in clients)
+            {
+                <option value="@client.Id" selected="@(client.Id == preselectedClientId)">@client.Name (@client.Email)</option>
+            }
+        </select>
+        @if (preselectedClientId.HasValue)
+        {
+            <input type="hidden" name="ClientId" value="@preselectedClientId" />
+        }
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Invoice Number</label>
+        <input type="text" class="form-control" value="Auto-generated on save" readonly disabled />
+    </div>
+    <div class="mb-3">
+        <label for="IssueDateUtc" class="form-label">Issue Date</label>
+        <input id="IssueDateUtc" name="IssueDateUtc" type="date" class="form-control" value="@DateTime.Today.ToString("yyyy-MM-dd")" />
+    </div>
+    <div class="mb-3">
+        <label for="DueDateUtc" class="form-label">Due Date</label>
+        <input id="DueDateUtc" name="DueDateUtc" type="date" class="form-control" value="@DateTime.Today.AddDays(30).ToString("yyyy-MM-dd")" />
+    </div>
+    <div class="mb-3">
+        <label for="Currency" class="form-label">Currency</label>
+        <input id="Currency" name="Currency" class="form-control" value="USD" />
+    </div>
+    <div class="mb-3">
+        <label for="Notes" class="form-label">Notes</label>
+        <textarea id="Notes" name="Notes" class="form-control"></textarea>
+    </div>
+    <button type="submit" class="btn btn-primary">Create</button>
+    <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary ms-2">Cancel</a>
+</form>

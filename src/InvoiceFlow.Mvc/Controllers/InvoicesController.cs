@@ -1,4 +1,6 @@
+using System.Security.Claims;
 using InvoiceFlow.Application.Abstractions;
+using InvoiceFlow.Application.Clients;
 using InvoiceFlow.Application.Invoices;
 using InvoiceFlow.Application.Reminders;
 using InvoiceFlow.Domain;
@@ -9,212 +11,277 @@ using Microsoft.AspNetCore.Mvc;
 namespace InvoiceFlow.Mvc.Controllers;
 
 [Authorize]
-[Route("api/[controller]")]
-[ApiController]
-public class InvoicesController : ControllerBase
+public class InvoicesController : Controller
 {
     private readonly InvoiceService _invoiceService;
+    private readonly ClientService _clientService;
     private readonly IInvoicePdfService _pdfService;
     private readonly ManualReminderService _reminderService;
+    private readonly InvoiceDeliveryService _deliveryService;
 
     public InvoicesController(
         InvoiceService invoiceService,
+        ClientService clientService,
         IInvoicePdfService pdfService,
-        ManualReminderService reminderService)
+        ManualReminderService reminderService,
+        InvoiceDeliveryService deliveryService)
     {
         _invoiceService = invoiceService;
+        _clientService = clientService;
         _pdfService = pdfService;
         _reminderService = reminderService;
+        _deliveryService = deliveryService;
     }
 
-    [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] Guid? clientId, [FromQuery] InvoiceStatus? status)
-    {
-        var invoices = await _invoiceService.GetAllInvoicesAsync(clientId, status);
-        return Ok(invoices);
-    }
-
-    [HttpGet("{id:guid}")]
-    public async Task<IActionResult> GetById(Guid id)
-    {
-        var invoice = await _invoiceService.GetInvoiceAsync(id);
-        return invoice is not null ? Ok(invoice) : NotFound();
-    }
-
-    [HttpPost]
-    public async Task<IActionResult> CreateDraft([FromBody] CreateInvoiceDraftRequest request)
+    public async Task<IActionResult> Index(Guid? clientId, InvoiceStatus? status)
     {
         try
         {
-            var id = await _invoiceService.CreateInvoiceDraftAsync(
-                request.ClientId,
-                request.Number,
-                request.IssueDateUtc,
-                request.DueDateUtc,
-                request.Currency,
-                request.Notes);
+            var workspaceId = GetWorkspaceId();
+            ViewBag.Clients = await _clientService.GetClientsAsync(workspaceId);
+            ViewBag.Invoices = await _invoiceService.GetAllInvoicesAsync(workspaceId, clientId, status);
+            ViewBag.SelectedClientId = clientId?.ToString() ?? "";
+            ViewBag.SelectedStatus = status?.ToString() ?? "";
+        }
+        catch (Exception ex)
+        {
+            ViewBag.Error = ex.Message;
+            ViewBag.Clients = (IReadOnlyList<ClientDto>)Array.Empty<ClientDto>();
+            ViewBag.Invoices = (IReadOnlyList<InvoiceDto>)Array.Empty<InvoiceDto>();
+        }
 
-            return Created($"/api/invoices/{id}", new { id });
-        }
-        catch (ArgumentException ex)
+        return View();
+    }
+
+    public async Task<IActionResult> Details(Guid id)
+    {
+        try
         {
-            return BadRequest(new { error = ex.Message });
+            var workspaceId = GetWorkspaceId();
+            var invoice = await _invoiceService.GetInvoiceAsync(id, workspaceId);
+            if (invoice is null) return NotFound();
+
+            var clients = await _clientService.GetClientsAsync(workspaceId);
+            var client = clients.FirstOrDefault(c => c.Id == invoice.ClientId);
+
+            ViewBag.Invoice = invoice;
+            ViewBag.ClientName = client?.Name ?? "Unknown";
+            ViewBag.ClientEmail = client?.Email;
+
+            if (invoice.Status is InvoiceStatus.Issued or InvoiceStatus.Overdue or InvoiceStatus.Paid)
+                ViewBag.Deliveries = await _deliveryService.GetDeliveryHistoryAsync(id, workspaceId);
+            else
+                ViewBag.Deliveries = (IReadOnlyList<ReminderDto>)Array.Empty<ReminderDto>();
+
+            if (invoice.Status != InvoiceStatus.Draft)
+                ViewBag.Reminders = await _reminderService.GetReminderHistoryAsync(id, workspaceId);
+            else
+                ViewBag.Reminders = (IReadOnlyList<ReminderDto>)Array.Empty<ReminderDto>();
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex)
         {
-            return NotFound(new { error = ex.Message });
+            ViewBag.Error = ex.Message;
+        }
+
+        return View();
+    }
+
+    public async Task<IActionResult> Create(Guid? clientId)
+    {
+        try
+        {
+            var clients = await _clientService.GetClientsAsync(GetWorkspaceId());
+            ViewBag.Clients = clients;
+            ViewBag.PreselectedClientId = clientId;
+        }
+        catch (Exception ex)
+        {
+            ViewBag.Error = ex.Message;
+            ViewBag.Clients = (IReadOnlyList<ClientDto>)Array.Empty<ClientDto>();
+        }
+
+        return View();
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Create(CreateInvoiceDraftRequest request)
+    {
+        try
+        {
+            var workspaceId = GetWorkspaceId();
+            var issueDate = request.IssueDateUtc.ToUniversalTime();
+            var dueDate = request.DueDateUtc.ToUniversalTime();
+
+            await _invoiceService.CreateInvoiceDraftAsync(
+                workspaceId, request.ClientId, null, issueDate, dueDate,
+                request.Currency?.ToUpperInvariant() ?? "USD", request.Notes);
+
+            return RedirectToAction(nameof(ClientsController.Invoices), "Clients", new { clientId = request.ClientId });
+        }
+        catch (Exception ex)
+        {
+            ViewBag.Error = ex.Message;
+            ViewBag.Clients = await _clientService.GetClientsAsync(GetWorkspaceId());
+            return View();
         }
     }
 
-    [HttpPost("{id:guid}/issue")]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Issue(Guid id)
     {
         try
         {
-            await _invoiceService.IssueInvoiceAsync(id);
-            return Ok();
+            await _invoiceService.IssueInvoiceAsync(id, GetWorkspaceId());
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex)
         {
-            return BadRequest(new { error = ex.Message });
+            TempData["Error"] = ex.Message;
         }
+
+        return RedirectToAction(nameof(Details), new { id });
     }
 
-    [HttpPost("{id:guid}/mark-paid")]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> MarkPaid(Guid id)
     {
         try
         {
-            await _invoiceService.MarkInvoicePaidAsync(id);
-            return Ok();
+            await _invoiceService.MarkInvoicePaidAsync(id, GetWorkspaceId());
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex)
         {
-            return BadRequest(new { error = ex.Message });
+            TempData["Error"] = ex.Message;
         }
+
+        return RedirectToAction(nameof(Details), new { id });
     }
 
-    [HttpPost("{id:guid}/mark-overdue")]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> MarkOverdue(Guid id)
     {
         try
         {
-            await _invoiceService.MarkInvoiceOverdueAsync(id);
-            return Ok();
+            await _invoiceService.MarkInvoiceOverdueAsync(id, GetWorkspaceId());
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex)
         {
-            return BadRequest(new { error = ex.Message });
+            TempData["Error"] = ex.Message;
         }
+
+        return RedirectToAction(nameof(Details), new { id });
     }
 
-    [HttpPost("{id:guid}/cancel")]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Cancel(Guid id)
     {
         try
         {
-            await _invoiceService.CancelInvoiceAsync(id);
-            return Ok();
+            await _invoiceService.CancelInvoiceAsync(id, GetWorkspaceId());
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex)
         {
-            return BadRequest(new { error = ex.Message });
+            TempData["Error"] = ex.Message;
         }
+
+        return RedirectToAction(nameof(Details), new { id });
     }
 
-    [HttpPost("{id:guid}/line-items")]
-    public async Task<IActionResult> AddLineItem(Guid id, [FromBody] AddLineItemRequest request)
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddLineItem(Guid id, string description, decimal quantity, decimal unitPrice)
     {
         try
         {
-            var lineItemId = await _invoiceService.AddLineItemAsync(id, request.Description, request.Quantity, request.UnitPrice);
-            return Created($"/api/invoices/{id}/line-items/{lineItemId}", new { lineItemId });
+            await _invoiceService.AddLineItemAsync(id, GetWorkspaceId(), description, quantity, unitPrice);
         }
-        catch (ArgumentException ex)
+        catch (Exception ex)
         {
-            return BadRequest(new { error = ex.Message });
+            TempData["Error"] = ex.Message;
         }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
+
+        return RedirectToAction(nameof(Details), new { id });
     }
 
-    [HttpPut("{id:guid}/line-items/{lineItemId:int}")]
-    public async Task<IActionResult> UpdateLineItem(Guid id, int lineItemId, [FromBody] UpdateLineItemRequest request)
-    {
-        try
-        {
-            await _invoiceService.UpdateLineItemAsync(id, lineItemId, request.Description, request.Quantity, request.UnitPrice);
-            return Ok();
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
-    }
-
-    [HttpDelete("{id:guid}/line-items/{lineItemId:int}")]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> RemoveLineItem(Guid id, int lineItemId)
     {
         try
         {
-            await _invoiceService.RemoveLineItemAsync(id, lineItemId);
-            return Ok();
+            await _invoiceService.RemoveLineItemAsync(id, GetWorkspaceId(), lineItemId);
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex)
         {
-            return BadRequest(new { error = ex.Message });
+            TempData["Error"] = ex.Message;
         }
+
+        return RedirectToAction(nameof(Details), new { id });
     }
 
-    [HttpGet("{id:guid}/pdf")]
-    public async Task<IActionResult> GetPdf(Guid id)
+    public async Task<IActionResult> Pdf(Guid id)
     {
-        var invoiceDto = await _invoiceService.GetInvoiceAsync(id);
-        if (invoiceDto is null)
-            return NotFound();
+        var workspaceId = GetWorkspaceId();
+        var invoiceDto = await _invoiceService.GetInvoiceAsync(id, workspaceId);
+        if (invoiceDto is null) return NotFound();
 
         var invoice = await _invoiceService.LoadInvoiceDomainAsync(id);
-        if (invoice is null)
-            return NotFound();
+        if (invoice is null) return NotFound();
 
         if (invoice.LineItems.Count == 0)
-            return BadRequest(new { error = "Cannot generate PDF for an invoice without line items." });
+            return BadRequest("Cannot generate PDF for an invoice without line items.");
 
         var pdf = _pdfService.GeneratePdf(invoice);
         return File(pdf, "application/pdf", $"invoice-{invoiceDto.Number}.pdf");
     }
 
-    [HttpPost("{id:guid}/reminders/manual")]
-    public async Task<IActionResult> SendManualReminder(Guid id, [FromQuery] string? message)
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SendInvoice(Guid id, string? customMessage)
     {
         try
         {
-            var reminder = await _reminderService.SendManualReminderAsync(id, message);
-            return Created($"/api/invoices/{id}/reminders", reminder);
+            await _deliveryService.SendInvoiceEmailAsync(id, GetWorkspaceId(), customMessage);
+            TempData["DeliveryFeedback"] = "Invoice sent successfully.";
+            TempData["DeliveryFeedbackCss"] = "alert-success";
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { error = ex.Message });
+            TempData["DeliveryFeedback"] = ex.Message;
+            TempData["DeliveryFeedbackCss"] = "alert-danger";
         }
+
+        return RedirectToAction(nameof(Details), new { id });
     }
 
-    [HttpGet("{id:guid}/reminders")]
-    public async Task<IActionResult> GetReminders(Guid id)
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SendReminder(Guid id, string? customMessage)
     {
-        var reminders = await _reminderService.GetReminderHistoryAsync(id);
-        return Ok(reminders);
+        try
+        {
+            await _reminderService.SendManualReminderAsync(id, GetWorkspaceId(), customMessage);
+            TempData["ReminderFeedback"] = "Reminder sent successfully.";
+            TempData["ReminderFeedbackCss"] = "alert-success";
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["ReminderFeedback"] = ex.Message;
+            TempData["ReminderFeedbackCss"] = "alert-danger";
+        }
+
+        return RedirectToAction(nameof(Details), new { id });
     }
 
-    [HttpGet("~/api/clients/{clientId:guid}/invoices")]
-    public async Task<IActionResult> GetClientInvoices(Guid clientId)
+    private Guid GetWorkspaceId()
     {
-        var invoices = await _invoiceService.GetClientInvoicesAsync(clientId);
-        return Ok(invoices);
+        var claim = User.FindFirst("WorkspaceId");
+        if (claim is not null && Guid.TryParse(claim.Value, out var workspaceId))
+            return workspaceId;
+        throw new UnauthorizedAccessException("Unable to determine workspace from authentication state.");
     }
 }

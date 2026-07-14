@@ -1,0 +1,54 @@
+@{
+    ViewData["Title"] = "Login";
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login - InvoiceFlow</title>
+    <link rel="stylesheet" href="~/bootstrap/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/app.css" />
+    <link rel="icon" type="image/png" href="~/favicon.png" />
+</head>
+<body>
+    <div class="auth-layout">
+        <div class="min-vh-100 d-flex align-items-center justify-content-center px-3">
+            <div class="auth-container">
+                <div class="auth-header">
+                    <h1 class="auth-heading">InvoiceFlow</h1>
+                    <p class="auth-subtitle">Sign in to continue</p>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(ViewBag.Error as string))
+                {
+                    <div class="alert alert-danger" role="alert">@ViewBag.Error</div>
+                }
+
+                <form method="post" asp-controller="Auth" asp-action="Login">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="ReturnUrl" value="@ViewBag.ReturnUrl" />
+
+                    <div class="mb-3">
+                        <label for="Email" class="form-label">Email</label>
+                        <input id="Email" name="Email" class="form-control" autocomplete="email" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="Password" class="form-label">Password</label>
+                        <input id="Password" name="Password" type="password" class="form-control" autocomplete="current-password" />
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">Sign in</button>
+                </form>
+
+                <div class="auth-footer">
+                    Don't have an account? <a asp-controller="Auth" asp-action="Register">Create one</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,97 @@
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+@if (ViewBag.Error != null)
+{
+    <div class="alert alert-danger">@ViewBag.Error</div>
+}
+
+@if (ViewBag.Clients == null)
+{
+    <p class="text-muted">Loading...</p>
+}
+else
+{
+    var clients = (IReadOnlyList<ClientDto>)ViewBag.Clients;
+    var overdueCount = (int)ViewBag.OverdueCount;
+    var upcomingCount = (int)ViewBag.UpcomingCount;
+
+    <div class="page-header">
+        <h1 class="mb-0">Dashboard</h1>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card text-bg-primary">
+                <div class="card-body">
+                    <div class="text-white-50 small text-uppercase fw-semibold mb-1">Total Clients</div>
+                    <p class="display-6 mb-0">@clients.Count</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card @(overdueCount > 0 ? "text-bg-danger" : "text-bg-secondary")">
+                <div class="card-body">
+                    <div class="text-white-50 small text-uppercase fw-semibold mb-1">Overdue Invoices</div>
+                    <p class="display-6 mb-0">@overdueCount</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card @(upcomingCount > 0 ? "text-bg-warning" : "text-bg-secondary")">
+                <div class="card-body">
+                    <div class="text-white-50 small text-uppercase fw-semibold mb-1">Due Soon</div>
+                    <p class="display-6 mb-0">@upcomingCount</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2 mb-4">
+        <a asp-controller="Clients" asp-action="Index" class="btn btn-outline-primary">View Clients</a>
+        <a asp-controller="Clients" asp-action="Create" class="btn btn-primary">Create Client</a>
+        <a asp-controller="Invoices" asp-action="Create" class="btn btn-success">Create Invoice</a>
+    </div>
+
+    @if (clients.Count == 0)
+    {
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <p class="text-muted mb-2">No clients yet.</p>
+                <a asp-controller="Clients" asp-action="Create" class="btn btn-primary">Create your first client</a>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-body p-0">
+                <div class="px-3 pt-3 pb-2">
+                    <h3 class="mb-0">Recent Clients</h3>
+                </div>
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Company</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var client in clients)
+                        {
+                            <tr>
+                                <td>@client.Name</td>
+                                <td>@client.Email</td>
+                                <td>@client.CompanyName</td>
+                                <td><a asp-controller="Clients" asp-action="Invoices" asp-route-clientId="@client.Id" class="btn btn-sm btn-outline-secondary">Invoices</a></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+}

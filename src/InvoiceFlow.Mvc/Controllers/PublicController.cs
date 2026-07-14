@@ -3,9 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace InvoiceFlow.Mvc.Controllers;
 
-[Route("api/[controller]")]
-[ApiController]
-public class PublicController : ControllerBase
+public class PublicController : Controller
 {
     private readonly PublicInvoiceService _publicInvoiceService;
 
@@ -14,10 +12,24 @@ public class PublicController : ControllerBase
         _publicInvoiceService = publicInvoiceService;
     }
 
-    [HttpGet("invoices/{publicId}")]
-    public async Task<IActionResult> GetPublicInvoice(string publicId)
+    public async Task<IActionResult> Invoice(string publicId)
     {
-        var invoice = await _publicInvoiceService.GetPublicInvoiceAsync(publicId);
-        return invoice is not null ? Ok(invoice) : NotFound();
+        try
+        {
+            var invoice = await _publicInvoiceService.GetPublicInvoiceAsync(publicId);
+            if (invoice is null)
+            {
+                ViewBag.Error = "Invoice not found.";
+                return View();
+            }
+
+            ViewBag.Invoice = invoice;
+        }
+        catch
+        {
+            ViewBag.Error = "Invoice not found.";
+        }
+
+        return View();
     }
 }
