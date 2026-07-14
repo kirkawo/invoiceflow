@@ -429,3 +429,5 @@ FodyWeavers.xsd
 *.msp
 
 **/appsettings.local.json
+
+.opencode/
