@@ -2,6 +2,7 @@ using System.Security.Claims;
 using InvoiceFlow.Application;
 using InvoiceFlow.Application.Options;
 using InvoiceFlow.Infrastructure;
+using InvoiceFlow.Infrastructure.BackgroundJobs;
 using InvoiceFlow.Infrastructure.Persistence;
 using Microsoft.AspNetCore.DataProtection;
 using InvoiceFlow.Mvc.Models;
@@ -66,6 +67,9 @@ builder.Services.AddAntiforgery(options =>
 });
 
 builder.Services.AddControllersWithViews();
+
+builder.Services.AddHostedService<AutomaticReminderBackgroundService>();
+builder.Services.AddHostedService<InvoiceStatusSyncBackgroundService>();
 
 var app = builder.Build();
 
