@@ -15,19 +15,25 @@ public class PublicController : Controller
     public async Task<IActionResult> Invoice(string? publicId)
     {
         if (string.IsNullOrWhiteSpace(publicId))
-            return NotFound();
+        {
+            ViewBag.Error = "Invoice not found.";
+            return View();
+        }
 
         try
         {
             var invoice = await _publicInvoiceService.GetPublicInvoiceAsync(publicId);
             if (invoice is null)
-                return NotFound();
+            {
+                ViewBag.Error = "Invoice not found.";
+                return View();
+            }
 
             ViewBag.Invoice = invoice;
         }
         catch
         {
-            return NotFound();
+            ViewBag.Error = "Invoice not found.";
         }
 
         return View();
