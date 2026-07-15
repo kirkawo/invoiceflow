@@ -121,6 +121,11 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
+app.MapControllerRoute(
+    name: "publicInvoice",
+    pattern: "invoices/public/{publicId}",
+    defaults: new { controller = "Public", action = "Invoice" });
+
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
 
 app.Run();

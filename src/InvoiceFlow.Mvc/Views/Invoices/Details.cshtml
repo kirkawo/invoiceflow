@@ -8,7 +8,9 @@
     var reminders = (IReadOnlyList<ReminderDto>)ViewBag.Reminders;
     var deliveries = (IReadOnlyList<ReminderDto>)ViewBag.Deliveries;
     var today = DateOnly.FromDateTime(DateTime.UtcNow);
-    var publicBaseUrl = AppOptionsAccessor.Value.PublicBaseUrl ?? "";
+    var publicBaseUrl = !string.IsNullOrWhiteSpace(AppOptionsAccessor.Value.PublicBaseUrl)
+        ? AppOptionsAccessor.Value.PublicBaseUrl
+        : AppOptionsAccessor.Value.BaseUrl;
 
     string StatusClass(InvoiceStatus status) => status switch
     {
