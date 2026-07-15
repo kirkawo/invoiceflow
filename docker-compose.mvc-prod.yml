@@ -1,0 +1,57 @@
+# InvoiceFlow MVC – isolated production deployment
+# Usage:
+#   cp .env.example .env   (or set the env vars inline)
+#   docker compose -f docker-compose.mvc-prod.yml up --build -d
+#
+# This file is intentionally separate from docker-compose.prod.yml
+# so the legacy Api/Web deployment is never affected by MVC rollout.
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - pgdata_mvc:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  mvc:
+    build:
+      context: .
+      dockerfile: src/InvoiceFlow.Mvc/Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Database__ConnectionString: Host=db;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      App__BaseUrl: ${MVC_BASE_URL}
+      App__PublicBaseUrl: ${APP_PUBLIC_BASE_URL}
+      Email__SmtpHost: ${EMAIL_HOST}
+      Email__SmtpPort: ${EMAIL_PORT}
+      Email__FromAddress: ${EMAIL_FROM}
+      Email__Username: ${EMAIL_USERNAME}
+      Email__Password: ${EMAIL_PASSWORD}
+      Email__UseSsl: ${EMAIL_USE_SSL}
+    ports:
+      - "${MVC_PORT:-5002}:8080"
+    volumes:
+      - dataprotection_keys_mvc:/app/DataProtection-Keys
+    restart: unless-stopped
+
+volumes:
+  pgdata_mvc:
+  dataprotection_keys_mvc:
