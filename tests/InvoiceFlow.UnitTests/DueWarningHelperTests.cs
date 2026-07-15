@@ -48,12 +48,14 @@ public class DueWarningHelperTests
     }
 
     [Fact]
-    public void Issued_DueInPast_ReturnsNull()
+    public void Issued_DueInPast_ReturnsOverdueWarning()
     {
         var dueDate = Today.AddDays(-1);
         var result = DueWarningHelper.GetDueWarning(InvoiceStatus.Issued, dueDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc), Today);
 
-        Assert.Null(result);
+        Assert.NotNull(result);
+        Assert.Equal("Overdue by 1 day", result.Text);
+        Assert.Equal("text-danger fw-semibold", result.CssClass);
     }
 
     [Fact]

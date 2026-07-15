@@ -23,7 +23,7 @@ public static class DueWarningHelper
             }
         }
 
-        if (status == InvoiceStatus.Overdue && daysUntilDue < 0)
+        if ((status is InvoiceStatus.Issued or InvoiceStatus.Overdue) && daysUntilDue < 0)
         {
             var daysOverdue = -daysUntilDue;
             var dayLabel = daysOverdue == 1 ? "day" : "days";
